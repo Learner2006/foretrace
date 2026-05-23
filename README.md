@@ -1,92 +1,133 @@
-```markdown
 # ForeTrace
 
-ForeTrace is an enterprise-grade company behavior intelligence platform. It pulls SEC 10-K filings, extracts complex financial data and textual operational indicators locally, and processes them using advanced language models to evaluate long-term corporate health, market positioning, and historical structural analogs.
+A structural intelligence platform for company analysis. ForeTrace pulls SEC 10-K filings, extracts financial and operational signals, and uses language models to evaluate corporate health, market positioning, and historical analogs.
 
-**This platform is NOT a stock prediction app, trading bot, or speculative financial dashboard. It is an explainable corporate intelligence workspace.**
+**This is not a stock prediction app, trading bot, or financial dashboard.**  
+It is an explainable intelligence workspace for people who want to understand what a company is actually becoming.
 
----
-
-## 🎯 The North Star Question
-> *"What kind of company is this becoming, how structurally healthy is it, what market forces shape it, what historical situations resemble it, and what risks/opportunities emerge from that comparison?"*
+> **Status: Active development.** Core architecture and analysis workflows are functional. UI and intelligence layers are being iterated on.
 
 ---
 
-## 🚀 Core Product Pillars
+## The Core Question
 
-1. **Structural Company Evaluation:** Assessing operational stability, debt stress, cash flow quality, and overall survivability.
-2. **Market Position Intelligence:** Evaluating sector alignment, competitive ecosystem strength, and structural momentum.
-3. **Historical Analog Intelligence:** Identifying historically similar market patterns, trajectories, and temporal comparisons using trend fingerprinting.
-4. **Explainable AI Reasoning:** Every insight surfaces *why* it was generated, culling facts directly from extracted data rather than black-box AI assertions.
-5. **Structural Risk Intelligence:** Tracking macro vulnerabilities, concentration risks, and structural weaknesses.
+> *What kind of company is this becoming — how structurally healthy is it, what market forces shape it, what historical situations resemble it, and what risks and opportunities emerge from that?*
 
----
-
-## 🛠️ Architecture & Tech Stack
-
-### Backend
-- **FastAPI / Python:** Robust, asynchronous API endpoints.
-- **SEC EDGAR Client:** High-efficiency local SEC filing fetcher and keyword extractor.
-- **Groq Inference Engine:** Utilizing prod-grade `llama-3.3-70b-versatile` for high-fidelity financial reasoning.
-- **Slowapi:** Local security layer handling rate-limiting and access policies.
-
-### Frontend
-- **React (Vite):** Minimal, high-performance, responsive workspace layout.
-- **Tailwind CSS / Custom Styling:** Low-friction, non-chaotic, academic/research-oriented UI aesthetics.
+Most finance tools answer: *what happened?*  
+Some answer: *what may happen?*  
+ForeTrace answers: *what historically similar situations existed, why they mattered, and what structural outcomes followed.*
 
 ---
 
-## 📦 Installation & Setup
+## Screenshots
 
-### 1. Clone & Setup Repository
+**Homepage — Structural Intelligence Platform**
+![Homepage](./screenshots/homepage.png)
+
+**Market Structure Feed — Shifts detected this quarter**
+![Market Structure Feed](./screenshots/market-structure.png)
+
+**Analog Engine — History doesn't repeat. But structure does.**
+![Analog Engine](./screenshots/analog-engine.png)
+
+**Reasoning Engine — Not a score. A chain of evidence.**
+![Reasoning Engine](./screenshots/reasoning-engine.png)
+
+---
+
+## What It Does
+
+**Structural Evaluation** — Financial health, survivability, debt stress, cash flow quality, and operational stability. Can this company survive and remain competitive?
+
+**Market Position Intelligence** — Sector alignment, competitive ecosystem strength, dependency exposure, and structural momentum. How strong is this company within its ecosystem?
+
+**Historical Analog Intelligence** — Identifies historically similar companies and trajectories using trend fingerprinting and DTW similarity search. Pattern matching on extracted data — not vibes.
+
+**Explainable Reasoning** — Every insight surfaces *why* it was generated, *what evidence* supports it, and *what confidence* it carries. No black-box assertions.
+
+**Structural Risk Tracking** — Concentration risks, debt stress, disruption exposure, macro vulnerability. What could structurally weaken this company?
+
+---
+
+## Design Philosophy
+
+The user should leave feeling *"I understand this company better now"* — not *"I saw a lot of complicated charts."*
+
+- Every visualization explains why it matters, not just what it shows
+- Calm, research-oriented UI — not a trading terminal
+- Explainability is non-negotiable: every output traces back to source data
+- Reliability and clarity before flashy AI or fancy animations
+
+---
+
+## Architecture
+
+| Layer | Responsibility |
+|---|---|
+| Market Data Infrastructure | Ingestion, normalization, macro data, historical storage |
+| Structural Intelligence Engine | Sector correlation, divergence detection, regime classification |
+| Historical Analog Engine | Trend fingerprinting, DTW similarity, analog ranking |
+| Sentiment Intelligence | FinBERT analysis, earnings sentiment, narrative shifts |
+| Risk Intelligence | Bankruptcy risk, concentration risk, debt stress, survivability |
+| Explainability | AI summaries, confidence estimation, evidence surfacing |
+| Security | Auth, RBAC, tenant isolation, encryption, audit logging |
+
+---
+
+## Stack
+
+**Backend** — FastAPI · Python · SEC EDGAR client · Groq (`llama-3.3-70b-versatile`) · Slowapi
+
+**Frontend** — React (Vite) · Tailwind CSS
+
+---
+
+## Setup
+
+### 1. Clone
+
 ```bash
-git clone [https://github.com/Learner2006/foretrace.git](https://github.com/Learner2006/foretrace.git)
+git clone https://github.com/Learner2006/foretrace.git
 cd foretrace
-
 ```
 
-### 2. Backend Environment Configuration
-
-Navigate to the backend, spin up a virtual environment, and install dependencies:
+### 2. Backend
 
 ```bash
 cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-
 ```
 
-Create a `.env` file inside the `backend/` directory:
-
-```env
-GROQ_API_KEY=your_actual_groq_api_key_here
+Create `.env` in `backend/`:
 
 ```
+GROQ_API_KEY=your_groq_api_key
+```
 
-### 3. Frontend Environment Configuration
-
-Navigate to the frontend directory and install Node modules:
+### 3. Frontend
 
 ```bash
 cd ../frontend
 npm install
-
+npm run dev
 ```
 
 ---
 
-## 🚦 UI & Design Principles
+## Security
 
-* **Explanation Beside Visualization:** No raw charts without context. Every chart must explicitly tell the user why they should care.
-* **Calm over Chaotic:** Absolute rejection of the high-frequency retail trading aesthetics. The UI functions as an objective intelligence briefing.
-
-## 🔒 Security Posture
-
-* Explicit, safe CORS origin matching.
-* API rate-limiting enforced on business logic routes.
-* Strict isolation of environmental secrets.
-
-```
+- Strict CORS origin matching
+- Rate limiting on all business logic routes
+- Environment secrets fully isolated
+- Designed for enterprise-grade use: sensitive filings, confidential evaluations
 
 ---
+
+## What This Platform Will Never Do
+
+- Emit buy/sell signals
+- Guarantee predictions
+- Ship models that cannot explain their reasoning
+- Replace analysts or make executive decisions
