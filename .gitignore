@@ -131,7 +131,3 @@ Icon
 *.njsproj
 *.sln
 *.swp
-
-# Hide static UI assets and boilerplate media
-frontend/src/assets/
-frontend/public/

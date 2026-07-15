@@ -1,364 +1,391 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import SearchBar from "../components/SearchBar";
+import { motion } from "framer-motion";
+import { MV, v, EASE_OUT_EXPO } from "../styles/animations";
+import { useBreakpoint } from "../hooks/useWindowWidth";
+import { Icon, PremiumCard } from "../components/ui/UI";
+import SearchBar from "../components/ui/SearchBar";
+import { ProBadge } from "../components/layout/Shell";
+import { useTheme } from "../hooks/useTheme";
+import MarketPositionCard from "../components/company/MarketPositionCard";
+import RiskScoreCard from "../components/company/RiskScoreCard";
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
-  return isMobile;
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+
+const DEMO_DATA = {
+  CSCO: {
+    company: "Cisco Systems",
+    behavioral_summary: {
+      what_is_happening: "Cisco is navigating a period of strategic transformation amid moderate network equipment market headwinds, with heightened focus on software and subscription-based services.",
+      why_it_matters: "Software transitions reduce hardware margin dependency and create more predictable recurring revenue.",
+      confidence: "Moderate",
+    },
+    market_position: { sector_standing: "Technology · Network Infrastructure", momentum: "stable", key_dependency: "Hardware refresh cycles still drive a third of revenue" },
+    structural_risk: { score: 72, zone: "Safe Zone" },
+    structural_signals: { revenue_trend: "stable", debt_posture: "stable", margin_pressure: false, cash_position: "strong", layoffs_or_restructuring: false, capex_trend: "increasing" },
+    analogs: [
+      { what_they_resembled: "Hardware-centric infrastructure vendor facing commoditization", action_taken: "Pivoted to software-defined networking and subscriptions", year: 2020, similarity_score: 75, analog_ticker: "IBM" },
+      { what_they_resembled: "Product-driven model with slowing unit growth", action_taken: "Emphasized services and recurring revenue", year: 2021, similarity_score: 68, analog_ticker: "ORCL" },
+    ],
+  },
+  AAPL: {
+    company: "Apple Inc.",
+    behavioral_summary: {
+      what_is_happening: "Apple continues to dominate premium consumer electronics with strong ecosystem lock-in and expanding services revenue creating a resilient moat.",
+      why_it_matters: "Services diversification reduces hardware cyclicality and improves predictability of earnings.",
+      confidence: "High",
+    },
+    market_position: { sector_standing: "Technology · Consumer Electronics", momentum: "growing", key_dependency: "iPhone still drives over half of total revenue" },
+    structural_risk: { score: 88, zone: "Safe Zone" },
+    structural_signals: { revenue_trend: "growing", debt_posture: "decreasing", margin_pressure: false, cash_position: "strong", layoffs_or_restructuring: false, capex_trend: "increasing" },
+    analogs: [
+      { what_they_resembled: "Hardware manufacturer with maturing core product line", action_taken: "Shifted to services-first growth strategy", year: 2019, similarity_score: 82, analog_ticker: "MSFT" },
+    ],
+  },
 };
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const S = {
-  bg:         "#0a0a0a",
-  surface:    "#0d0d0d",
-  border:     "#1a1a1a",
-  border2:    "#222",
-  text:       "#e2e2e2",
-  dim:        "#888",
-  muted:      "#555",
-  label:      "#444",
-  font:       "'IBM Plex Mono', 'Courier New', monospace",
-  blue:       "#60a5fa",
-  success:    "#4ade80",
-  successBg:  "#0a1f12",
-  successBdr: "#14532d",
-  fail:       "#f87171",
-  failBg:     "#160808",
-  failBdr:    "#7f1d1d",
-  warn:       "#fbbf24",
-  warnBg:     "#1a1500",
-  warnBdr:    "#78350f",
-};
-
-const LABEL = {
-  fontSize: 9,
-  letterSpacing: "0.12em",
-  color: S.label,
-  textTransform: "uppercase",
-  fontFamily: S.font,
-};
-
-const CARD = (extra = {}) => ({
-  background: S.surface,
-  border: `1px solid ${S.border}`,
-  borderRadius: 8,
-  padding: "18px 20px",
-  fontFamily: S.font,
-  ...extra,
-});
-
-// ─── Structural signal dimensions ────────────────────────────────────────────
 const DIMS = [
-  { key: "revenue_trend",            label: "Revenue Trend",       good: ["growing", "stable"],    bad: ["declining", "sharply_declining"] },
-  { key: "debt_posture",             label: "Debt Posture",        good: ["low", "decreasing"],    bad: ["increasing", "high"] },
-  { key: "cash_position",            label: "Cash Position",       good: ["strong", "healthy"],    bad: ["weak", "critical"] },
-  { key: "margin_pressure",          label: "Margin Pressure",     good: [false],                  bad: [true] },
-  { key: "layoffs_or_restructuring", label: "Restructuring Risk",  good: [false],                  bad: [true] },
-  { key: "capex_trend",              label: "CapEx Trend",         good: ["increasing"],           bad: ["declining"] },
+  { key: "revenue_trend", label: "Revenue Trend", good: ["growing", "stable"], bad: ["declining", "sharply_declining"] },
+  { key: "debt_posture", label: "Debt Posture", good: ["low", "decreasing", "stable"], bad: ["increasing", "high"] },
+  { key: "cash_position", label: "Cash Position", good: ["strong", "healthy"], bad: ["weak", "critical"] },
+  { key: "margin_pressure", label: "Margin Pressure", good: [false], bad: [true] },
+  { key: "layoffs_or_restructuring", label: "Restructuring Risk", good: [false], bad: [true] },
+  { key: "capex_trend", label: "CapEx Trend", good: ["increasing", "stable"], bad: ["declining"] },
 ];
 
 const scoreSignal = (signals, dim) => {
   if (!signals) return null;
-  const v = signals[dim.key];
-  if (v === undefined || v === null) return null;
-  if (dim.good.some(g => g === v)) return "good";
-  if (dim.bad.some(b => b === v))  return "bad";
+  const val = signals[dim.key];
+  if (val === undefined || val === null) return null;
+  if (dim.good.includes(val)) return "good";
+  if (dim.bad.includes(val)) return "bad";
   return "neutral";
 };
 
-const fmtVal = v => {
-  if (v === true)  return "Yes";
-  if (v === false) return "No";
-  if (!v || v === null) return "—";
-  return String(v).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+const fmtVal = val => {
+  if (val === true) return "Yes";
+  if (val === false) return "No";
+  if (val === undefined || val === null) return "—";
+  return String(val).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 };
 
-const structuralScore = signals => {
+const netScore = signals => {
   if (!signals) return null;
   let good = 0, bad = 0;
   DIMS.forEach(dim => {
     const s = scoreSignal(signals, dim);
     if (s === "good") good++;
-    if (s === "bad")  bad++;
+    if (s === "bad") bad++;
   });
   return { good, bad, net: good - bad };
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function shapeCompareData(raw, ticker) {
+  const bs = raw.behavioral_summary ?? {};
+  const mp = raw.market_position ?? {};
+  const sr = raw.structural_risk ?? {};
+  const sigs = raw.structural_signals ?? raw.signals ?? {};
+  const analogs = raw.analogs ?? raw.behavioral_analogs ?? [];
 
-const Pill = ({ score }) => {
+  const confidence = bs.confidence ?? "Moderate";
+
+  const net = netScore(sigs);
+  const riskTrend = net === null ? "stable" : net.net > 0 ? "down" : net.net < 0 ? "up" : "stable";
+  const overallRisk = Math.max(0, Math.min(100, 100 - (sr.score ?? 50)));
+
+  const riskMatrix = DIMS.map(dim => {
+    const s = scoreSignal(sigs, dim);
+    if (s === null) return null;
+    const score = s === "good" ? 22 : s === "bad" ? 82 : 50;
+    return {
+      dimension: dim.label,
+      score,
+      trend: score >= 65 ? "up" : score <= 35 ? "down" : "neutral",
+      explanation: `${dim.label}: ${fmtVal(sigs[dim.key])}`,
+    };
+  }).filter(Boolean);
+
+  const topAnalog = [...analogs].sort((a, b) => (b.similarity_score ?? 0) - (a.similarity_score ?? 0))[0] ?? null;
+
+  return {
+    ticker: ticker?.toUpperCase() ?? "",
+    company_name: raw.company ?? ticker,
+    market_position: {
+      sector_standing: mp.sector_standing ?? "—",
+      momentum: mp.momentum ?? "stable",
+      key_dependency: mp.key_dependency ?? null,
+    },
+    structuralScore: {
+      overall: Math.round(overallRisk),
+      confidence,
+      trend: riskTrend,
+      explanation: bs.why_it_matters ?? bs.what_is_happening ?? "",
+    },
+    riskMatrix,
+    structural_signals: sigs,
+    net,
+    topAnalog,
+    analogCount: analogs.length,
+    behavioral_summary: [bs.what_is_happening, bs.why_it_matters].filter(Boolean).join(" "),
+  };
+}
+
+const ARROW_RIGHT = "M5 12h14M12 5l7 7-7 7";
+const VS_ACCENT_A = "#4C6FDB";
+const VS_ACCENT_B = "#C2703D";
+
+function CompareSearchColumn({ label, accent, onSearch, loading, error, data, t }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: accent, flexShrink: 0 }} />
+        <span className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase" }}>
+          {label}
+        </span>
+      </div>
+      <SearchBar t={t} onSearch={onSearch} loading={loading} />
+      {loading && (
+        <span className="ft-sans" style={{ fontSize: 11, color: t.textMuted, fontStyle: "italic" }}>Reading filings…</span>
+      )}
+      {error && (
+        <span className="ft-sans" style={{ fontSize: 11, color: "#C0453C" }}>{error}</span>
+      )}
+      {data && (
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 2 }}>
+          <span className="ft-serif" style={{ fontSize: 17, fontWeight: 400, color: t.text }}>{data.company_name}</span>
+          <span className="ft-sans" style={{ fontSize: 11, color: t.textMuted }}>{data.ticker}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionHeading({ eyebrow, title, t, isMobile }) {
+  return (
+    <motion.div variants={v(MV.fadeUp)} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
+      <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", margin: "0 0 6px" }}>
+        {eyebrow}
+      </p>
+      <h2 className="ft-serif" style={{ fontSize: isMobile ? 19 : 24, fontWeight: 400, margin: "0 0 20px", letterSpacing: "-0.3px", color: t.text }}>
+        {title}
+      </h2>
+    </motion.div>
+  );
+}
+
+function SignalPill({ score, t }) {
   if (!score) return null;
   const map = {
-    good:    { color: S.success, bg: S.successBg, char: "▲" },
-    bad:     { color: S.fail,    bg: S.failBg,    char: "▼" },
-    neutral: { color: S.warn,    bg: S.warnBg,    char: "—" },
+    good: { color: "#5C9B6E", bg: "rgba(92,155,110,0.1)", char: "▲" },
+    bad: { color: "#C0453C", bg: "rgba(192,69,60,0.08)", char: "▼" },
+    neutral: { color: t.warning, bg: t.warningBg, char: "—" },
   };
   const m = map[score];
   return (
-    <span style={{
-      fontSize: 9, fontWeight: 700,
-      color: m.color, background: m.bg,
-      borderRadius: 3, padding: "2px 6px",
-      fontFamily: S.font,
-    }}>{m.char}</span>
+    <span className="ft-sans" style={{ fontSize: 9, fontWeight: 700, color: m.color, background: m.bg, borderRadius: 3, padding: "2px 5px", flexShrink: 0 }}>
+      {m.char}
+    </span>
   );
-};
+}
 
-const DimRow = ({ dim, sigA, sigB }) => {
+function SignalGridRow({ dim, sigA, sigB, t, isMobile, delay }) {
   const sA = scoreSignal(sigA, dim);
   const sB = scoreSignal(sigB, dim);
   const aWins = sA === "good" && sB !== "good";
   const bWins = sB === "good" && sA !== "good";
 
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 130px 1fr",
-      alignItems: "center",
-      padding: "10px 0",
-      borderBottom: `1px solid ${S.border}`,
-      gap: 8,
-    }}>
-      {/* A side — right aligned */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
-        {sigA && <Pill score={sA} />}
-        <span style={{
-          fontSize: 11, fontFamily: S.font,
-          color: aWins ? S.blue : sA === "bad" ? S.fail : S.muted,
-          fontWeight: aWins ? 700 : 400,
-        }}>
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay, duration: 0.3, ease: EASE_OUT_EXPO }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 160px 1fr",
+        alignItems: "center",
+        padding: "12px 0",
+        borderBottom: `1px solid ${t.border}`,
+        gap: isMobile ? 4 : 8,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: isMobile ? "flex-start" : "flex-end" }}>
+        {sA && <SignalPill score={sA} t={t} />}
+        <span className="ft-sans" style={{ fontSize: 12, color: aWins ? VS_ACCENT_A : sA === "bad" ? "#C0453C" : t.textSub, fontWeight: aWins ? 700 : 400 }}>
           {sigA ? fmtVal(sigA[dim.key]) : "—"}
         </span>
       </div>
 
-      {/* Dimension label center */}
-      <div style={{ textAlign: "center" }}>
-        <span style={LABEL}>{dim.label}</span>
-      </div>
+      {!isMobile && (
+        <div style={{ textAlign: "center" }}>
+          <span className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.6px", textTransform: "uppercase" }}>
+            {dim.label}
+          </span>
+        </div>
+      )}
 
-      {/* B side — left aligned */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{
-          fontSize: 11, fontFamily: S.font,
-          color: bWins ? S.success : sB === "bad" ? S.fail : S.muted,
-          fontWeight: bWins ? 700 : 400,
-        }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: isMobile ? "flex-end" : "flex-start" }}>
+        {isMobile && (
+          <span className="ft-sans" style={{ fontSize: 9, color: t.textMuted, marginRight: "auto" }}>{dim.label}</span>
+        )}
+        <span className="ft-sans" style={{ fontSize: 12, color: bWins ? VS_ACCENT_B : sB === "bad" ? "#C0453C" : t.textSub, fontWeight: bWins ? 700 : 400 }}>
           {sigB ? fmtVal(sigB[dim.key]) : "—"}
         </span>
-        {sigB && <Pill score={sB} />}
+        {sB && <SignalPill score={sB} t={t} />}
       </div>
-    </div>
+    </motion.div>
   );
-};
+}
 
-const Verdict = ({ dataA, dataB, nameA, nameB }) => {
-  const sA = structuralScore(dataA?.structural_signals);
-  const sB = structuralScore(dataB?.structural_signals);
+function VerdictCard({ dataA, dataB, nameA, nameB, t, isMobile }) {
+  const sA = dataA.net;
+  const sB = dataB.net;
   if (!sA || !sB) return null;
 
-  const tied  = sA.net === sB.net;
+  const tied = sA.net === sB.net;
   const aWins = sA.net > sB.net;
-  const diff  = Math.abs(sA.net - sB.net);
-  const wColor = aWins ? S.blue : S.success;
-  const wBg    = aWins ? "#061221" : S.successBg;
-  const wBdr   = aWins ? "#1e3a5f" : S.successBdr;
+  const diff = Math.abs(sA.net - sB.net);
+  const winner = tied ? null : aWins ? { name: nameA, accent: VS_ACCENT_A } : { name: nameB, accent: VS_ACCENT_B };
 
   return (
-    <div style={{
-      ...CARD(),
-      background: tied ? S.warnBg : wBg,
-      border: `1px solid ${tied ? S.warnBdr : wBdr}`,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-        <span style={LABEL}>Structural Verdict</span>
-        <span style={{
-          fontSize: 11, fontWeight: 700,
-          letterSpacing: "0.1em", textTransform: "uppercase",
-          color: tied ? S.warn : wColor,
-        }}>
-          {tied ? "Structurally tied" : `${aWins ? nameA : nameB} is stronger`}
-        </span>
-        {!tied && (
-          <span style={{ fontSize: 10, color: S.muted }}>
-            +{diff} signal{diff !== 1 ? "s" : ""} ahead
-          </span>
-        )}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {[
-          { name: nameA, score: sA, color: S.blue },
-          { name: nameB, score: sB, color: S.success },
-        ].map(({ name, score, color }) => (
-          <div key={name}>
-            <span style={{ fontSize: 9, color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{name}</span>
-            <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
-              <span style={{ color: S.success }}>▲ {score.good} stable</span>
-              <span style={{ color: S.muted }}> · </span>
-              <span style={{ color: S.fail }}>▼ {score.bad} stressed</span>
-            </div>
+    <motion.div variants={v(MV.fadeUp)} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+      <PremiumCard t={t} style={{ background: tied ? t.warningBg : `${winner.accent}0D` }} glow>
+        <div style={{ padding: isMobile ? "20px 18px" : "24px 28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+            <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", margin: 0 }}>
+              Structural verdict
+            </p>
+            <span className="ft-sans" style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2px", color: tied ? t.warning : winner.accent }}>
+              {tied ? "Structurally tied" : `${winner.name} shows stronger fundamentals`}
+            </span>
+            {!tied && (
+              <span className="ft-sans" style={{ fontSize: 11, color: t.textMuted }}>
+                +{diff} signal{diff !== 1 ? "s" : ""} ahead
+              </span>
+            )}
           </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
-const AnalogOverlap = ({ dataA, dataB, nameA, nameB }) => {
-  const aa = dataA?.behavioral_analogs || [];
-  const ab = dataB?.behavioral_analogs || [];
-  if (!aa.length && !ab.length) return null;
-
-  const namesA = new Set(aa.map(a => a.company_name));
-  const namesB = new Set(ab.map(a => a.company_name));
-  const shared = aa.filter(a => namesB.has(a.company_name));
-  const onlyA  = aa.filter(a => !namesB.has(a.company_name));
-  const onlyB  = ab.filter(a => !namesA.has(a.company_name));
-
-  return (
-    <div style={CARD({ display: "flex", flexDirection: "column", gap: 14 })}>
-      <span style={LABEL}>Historical Analog Overlap</span>
-
-      {shared.length > 0 && (
-        <div>
-          <div style={{ fontSize: 9, color: S.warn, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-            ◈ Both companies share these analogs
-          </div>
-          {shared.map((a, i) => (
-            <div key={i} style={{
-              display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap",
-              padding: "7px 0",
-              borderBottom: i < shared.length - 1 ? `1px solid ${S.border}` : "none",
-            }}>
-              <span style={{ fontSize: 12, color: S.warn, fontWeight: 700 }}>{a.company_name}</span>
-              {a.time_period && <span style={{ fontSize: 10, color: S.muted }}>{a.time_period}</span>}
-              {a.outcome_summary && <span style={{ fontSize: 10, color: S.muted }}>— {a.outcome_summary}</span>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {(onlyA.length > 0 || onlyB.length > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          {[
-            { list: onlyA, name: nameA, color: S.blue },
-            { list: onlyB, name: nameB, color: S.success },
-          ].map(({ list, name, color }) => list.length > 0 && (
-            <div key={name}>
-              <div style={{ fontSize: 9, color, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-                {name} only
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+            {[{ name: nameA, score: sA, accent: VS_ACCENT_A }, { name: nameB, score: sB, accent: VS_ACCENT_B }].map(({ name, score, accent }) => (
+              <div key={name}>
+                <span className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: accent, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                  {name}
+                </span>
+                <p className="ft-sans" style={{ fontSize: 12, color: t.textSub, margin: "6px 0 0", lineHeight: 1.6 }}>
+                  <span style={{ color: "#5C9B6E", fontWeight: 600 }}>▲ {score.good} stable</span>
+                  <span style={{ color: t.textMuted }}> · </span>
+                  <span style={{ color: "#C0453C", fontWeight: 600 }}>▼ {score.bad} stressed</span>
+                </p>
               </div>
-              {list.map((a, i) => (
-                <div key={i} style={{
-                  padding: "5px 0",
-                  borderBottom: i < list.length - 1 ? `1px solid ${S.border}` : "none",
-                }}>
-                  <span style={{ fontSize: 11, color: S.dim }}>{a.company_name}</span>
-                  {a.time_period && <span style={{ fontSize: 10, color: S.muted, marginLeft: 8 }}>{a.time_period}</span>}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {shared.length === 0 && onlyA.length === 0 && onlyB.length === 0 && (
-        <span style={{ fontSize: 11, color: S.muted }}>No analog data available.</span>
-      )}
-    </div>
-  );
-};
-
-const RiskDiff = ({ dataA, dataB, nameA, nameB }) => {
-  const rA = dataA?.risk_signals || [];
-  const rB = dataB?.risk_signals || [];
-  if (!rA.length && !rB.length) return null;
-
-  const labelOf = r => (typeof r === "string" ? r : r?.signal || "");
-  const setA = new Set(rA.map(labelOf));
-  const setB = new Set(rB.map(labelOf));
-  const onlyA = rA.filter(r => !setB.has(labelOf(r)));
-  const onlyB = rB.filter(r => !setA.has(labelOf(r)));
-  const both  = rA.filter(r =>  setB.has(labelOf(r)));
-
-  return (
-    <div style={CARD({ display: "flex", flexDirection: "column", gap: 14 })}>
-      <span style={LABEL}>Risk Signal Divergence</span>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {[
-          { list: onlyA, name: nameA, color: S.blue },
-          { list: onlyB, name: nameB, color: S.success },
-        ].map(({ list, name, color }) => (
-          <div key={name}>
-            <div style={{ fontSize: 9, color, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-              Unique to {name}
-            </div>
-            {list.length === 0
-              ? <span style={{ fontSize: 11, color: S.muted }}>No unique risks vs peer</span>
-              : list.map((r, i) => (
-                  <div key={i} style={{
-                    fontSize: 11, color: S.fail,
-                    padding: "5px 0",
-                    borderBottom: i < list.length - 1 ? `1px solid ${S.border}` : "none",
-                  }}>▸ {labelOf(r)}</div>
-                ))
-            }
-          </div>
-        ))}
-      </div>
-      {both.length > 0 && (
-        <div>
-          <div style={{ fontSize: 9, color: S.warn, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-            Shared risks
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {both.map((r, i) => (
-              <span key={i} style={{
-                fontSize: 10, color: S.warn,
-                background: S.warnBg, border: `1px solid ${S.warnBdr}`,
-                borderRadius: 4, padding: "3px 8px",
-              }}>{labelOf(r)}</span>
             ))}
           </div>
         </div>
+      </PremiumCard>
+    </motion.div>
+  );
+}
+
+function AnalogColumn({ name, data, accent, t }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <span className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: accent, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+        {name}
+      </span>
+      {data.topAnalog ? (
+        <>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <span className="ft-serif" style={{ fontSize: 15, color: t.text, fontWeight: 400 }}>
+              {data.topAnalog.similarity_score ?? "—"}% match
+            </span>
+            {data.topAnalog.year && (
+              <span className="ft-sans" style={{ fontSize: 11, color: t.textMuted }}>{data.topAnalog.year}</span>
+            )}
+          </div>
+          {data.topAnalog.what_they_resembled && (
+            <div>
+              <p className="ft-sans" style={{ fontSize: 9, fontWeight: 600, color: t.textMuted, letterSpacing: "0.6px", textTransform: "uppercase", margin: "0 0 3px" }}>
+                Resembled
+              </p>
+              <p className="ft-sans" style={{ fontSize: 12, color: t.textSub, margin: 0, lineHeight: 1.6, fontWeight: 300 }}>
+                {data.topAnalog.what_they_resembled}
+              </p>
+            </div>
+          )}
+          {data.topAnalog.action_taken && (
+            <div>
+              <p className="ft-sans" style={{ fontSize: 9, fontWeight: 600, color: t.textMuted, letterSpacing: "0.6px", textTransform: "uppercase", margin: "0 0 3px" }}>
+                Action taken
+              </p>
+              <p className="ft-sans" style={{ fontSize: 12, color: t.text, margin: 0, lineHeight: 1.6 }}>
+                {data.topAnalog.action_taken}
+              </p>
+            </div>
+          )}
+          {data.analogCount > 1 && (
+            <span className="ft-sans" style={{ fontSize: 10, color: t.textMuted }}>
+              +{data.analogCount - 1} more analog{data.analogCount - 1 !== 1 ? "s" : ""} on file
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="ft-sans" style={{ fontSize: 12, color: t.textMuted, fontStyle: "italic" }}>No analogs on file</span>
       )}
     </div>
   );
-};
+}
 
-const SummaryDiff = ({ dataA, dataB, nameA, nameB, isMobile }) => {
-  const sA = dataA?.behavioral_summary?.summary;
-  const sB = dataB?.behavioral_summary?.summary;
-  if (!sA && !sB) return null;
+function AnalogSnapshotCard({ dataA, dataB, nameA, nameB, t, isMobile }) {
+  if (!dataA.topAnalog && !dataB.topAnalog) return null;
 
   return (
-    <div style={CARD({ display: "flex", flexDirection: "column", gap: 14 })}>
-      <span style={LABEL}>Behavioral Summary</span>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-        {[
-          { summary: sA, name: nameA, color: S.blue },
-          { summary: sB, name: nameB, color: S.success },
-        ].map(({ summary, name, color }) => (
-          <div key={name}>
-            <div style={{ fontSize: 9, color, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>{name}</div>
-            <p style={{ fontSize: 12, color: S.dim, lineHeight: 1.7, margin: 0 }}>
-              {summary || <span style={{ color: S.muted }}>—</span>}
-            </p>
+    <motion.div variants={v(MV.fadeUp)} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.15 }}>
+      <PremiumCard t={t} style={{ background: t.analogBg }}>
+        <div style={{ background: t.bgSubtle, borderBottom: `1px solid ${t.border}`, padding: "10px 20px" }}>
+          <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", margin: 0 }}>
+            Closest historical analog · each side
+          </p>
+        </div>
+        <div style={{ padding: isMobile ? "18px 16px" : "22px 26px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 20 : 28 }}>
+          <div style={{ borderLeft: isMobile ? "none" : `2px solid ${VS_ACCENT_A}33`, paddingLeft: isMobile ? 0 : 16 }}>
+            <AnalogColumn name={nameA} data={dataA} accent={VS_ACCENT_A} t={t} />
           </div>
-        ))}
-      </div>
-    </div>
+          <div style={{ borderLeft: isMobile ? "none" : `2px solid ${VS_ACCENT_B}33`, paddingLeft: isMobile ? 0 : 16, borderTop: isMobile ? `1px solid ${t.border}` : "none", paddingTop: isMobile ? 20 : 0 }}>
+            <AnalogColumn name={nameB} data={dataB} accent={VS_ACCENT_B} t={t} />
+          </div>
+        </div>
+      </PremiumCard>
+    </motion.div>
   );
-};
+}
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+function BehavioralSummaryCard({ dataA, dataB, nameA, nameB, t, isMobile }) {
+  if (!dataA.behavioral_summary && !dataB.behavioral_summary) return null;
+
+  return (
+    <motion.div variants={v(MV.fadeUp)} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.15 }}>
+      <PremiumCard t={t} style={{ background: t.bgSubtle }}>
+        <div style={{ padding: isMobile ? "20px 18px" : "24px 26px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 20 : 28 }}>
+          {[{ name: nameA, text: dataA.behavioral_summary, accent: VS_ACCENT_A }, { name: nameB, text: dataB.behavioral_summary, accent: VS_ACCENT_B }].map(({ name, text, accent }) => (
+            <div key={name}>
+              <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: accent, letterSpacing: "0.5px", textTransform: "uppercase", margin: "0 0 10px" }}>
+                {name} · behavioral read
+              </p>
+              <p className="ft-sans" style={{ fontSize: 13, color: t.textSub, lineHeight: 1.75, margin: 0, fontWeight: 300 }}>
+                {text || "—"}
+              </p>
+            </div>
+          ))}
+        </div>
+      </PremiumCard>
+    </motion.div>
+  );
+}
+
 export default function ComparePage() {
-  const nav = useNavigate();
-  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const { isMobile } = useBreakpoint();
+
+  const { t } = useTheme();
 
   const [dataA, setDataA] = useState(null);
   const [dataB, setDataB] = useState(null);
@@ -367,189 +394,177 @@ export default function ComparePage() {
   const [errorA, setErrorA] = useState(null);
   const [errorB, setErrorB] = useState(null);
 
-  const fetchData = async (ticker, name, side) => {
-    const setData    = side === "left" ? setDataA    : setDataB;
-    const setLoading = side === "left" ? setLoadingA : setLoadingB;
-    const setError   = side === "left" ? setErrorA   : setErrorB;
+  // If you're about to copy-paste this, stop and make a reusable hook instead.
+  const fetchSide = useCallback(async (ticker, name, side) => {
+    const setData = side === "A" ? setDataA : setDataB;
+    const setLoading = side === "A" ? setLoadingA : setLoadingB;
+    const setError = side === "A" ? setErrorA : setErrorB;
 
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://127.0.0.1:8000/analyze", {
+      const demo = DEMO_DATA[ticker?.toUpperCase()];
+      if (demo) {
+        setData(shapeCompareData(demo, ticker));
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company_name: name, ticker }),
       });
       if (!res.ok) throw new Error(`Server error ${res.status}`);
-      setData(await res.json());
+      const raw = await res.json();
+      setData(shapeCompareData(raw, ticker));
     } catch (e) {
-      setError(e.message || "Analysis failed");
+      setError(e.message ?? "Analysis failed");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const nameA = dataA?.company || "Company A";
-  const nameB = dataB?.company || "Company B";
-  const sigA  = dataA?.structural_signals;
-  const sigB  = dataB?.structural_signals;
-  const bothReady = dataA && dataB;
+  const nameA = dataA?.company_name ?? "Company A";
+  const nameB = dataB?.company_name ?? "Company B";
+  const bothReady = !!(dataA && dataB);
+  const maxW = { maxWidth: 980, margin: "0 auto", padding: `0 ${isMobile ? 20 : 32}px` };
 
   return (
-    <div style={{ background: S.bg, color: S.text, fontFamily: S.font, minHeight: "100vh" }}>
+    <div style={{ color: t.text }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
+        body { margin: 0; }
+        .ft-sans  { font-family: 'DM Sans','Inter',sans-serif; }
+        .ft-serif { font-family: 'DM Serif Display','Georgia',serif; }
+        .ft-mono  { font-family: 'DM Mono',monospace; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.25); border-radius: 2px; }
+      `}</style>
 
-      {/* Nav */}
-      <div
-        onClick={() => nav("/")}
-        style={{
-          padding: isMobile ? "16px" : "20px 48px",
-          borderBottom: `1px solid ${S.border2}`,
-          cursor: "pointer",
-          fontSize: 11,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: S.muted,
-        }}
-      >
-        ForeTrace / Compare
-      </div>
+      <div style={{ position: "relative", zIndex: 1 }}>
 
-      <div style={{
-        maxWidth: 960,
-        margin: "0 auto",
-        padding: isMobile ? "24px 16px" : "36px 40px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 24,
-      }}>
+<div style={{ ...maxW, padding: isMobile ? "40px 20px 32px" : "56px 32px 40px" }}>
+          <motion.div variants={v(MV.heroCh)} initial="hidden" animate="visible">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", margin: 0 }}>
+                Structural comparison
+              </p>
+              <ProBadge t={t} />
+            </div>
+            <h1 className="ft-serif" style={{ fontSize: isMobile ? 26 : 34, fontWeight: 400, margin: "0 0 10px", letterSpacing: "-0.4px", color: t.text, lineHeight: 1.15 }}>
+              Which company is structurally stronger?
+            </h1>
+            <p className="ft-sans" style={{ fontSize: 14, color: t.textSub, margin: 0, fontWeight: 300, lineHeight: 1.65, maxWidth: 560 }}>
+              Search two companies to compare structural health, market positioning, and historical analogs — side by side, with the reasoning shown.
+            </p>
+          </motion.div>
+        </div>
 
-        {/* Search inputs */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ ...LABEL, color: S.blue }}>Company A</span>
-            <SearchBar onSearch={(t, n) => fetchData(t, n, "left")} />
-            {loadingA && <span style={{ fontSize: 10, color: S.muted }}>Analyzing…</span>}
-            {errorA   && <span style={{ fontSize: 10, color: S.fail }}>{errorA}</span>}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ ...LABEL, color: S.success }}>Company B</span>
-            <SearchBar onSearch={(t, n) => fetchData(t, n, "right")} />
-            {loadingB && <span style={{ fontSize: 10, color: S.muted }}>Analyzing…</span>}
-            {errorB   && <span style={{ fontSize: 10, color: S.fail }}>{errorB}</span>}
+<div style={{ ...maxW, marginBottom: isMobile ? 36 : 48 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 20 : 24 }}>
+            <CompareSearchColumn label="Company A" accent={VS_ACCENT_A} onSearch={(ticker, name) => fetchSide(ticker, name, "A")} loading={loadingA} error={errorA} data={dataA} t={t} />
+            <CompareSearchColumn label="Company B" accent={VS_ACCENT_B} onSearch={(ticker, name) => fetchSide(ticker, name, "B")} loading={loadingB} error={errorB} data={dataB} t={t} />
           </div>
         </div>
 
-        {/* Company name headers */}
-        {(dataA || dataB) && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 40px 1fr",
-            alignItems: "center",
-            gap: 8,
-          }}>
-            <div>
-              <div style={{ fontSize: 9, color: S.blue, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Company A</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: dataA ? S.blue : S.muted }}>
-                {dataA ? nameA : <span style={{ color: S.muted, fontSize: 13 }}>Not yet analyzed</span>}
-              </div>
-              {dataA?.behavioral_summary?.behavioral_pattern_identified && (
-                <div style={{ fontSize: 10, color: S.muted, marginTop: 4 }}>
-                  {dataA.behavioral_summary.behavioral_pattern_identified}
-                </div>
-              )}
-            </div>
-            {!isMobile && (
-              <div style={{ textAlign: "center", fontSize: 14, color: S.border2 }}>vs</div>
-            )}
-            <div style={{ textAlign: isMobile ? "left" : "right" }}>
-              <div style={{ fontSize: 9, color: S.success, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Company B</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: dataB ? S.success : S.muted }}>
-                {dataB ? nameB : <span style={{ color: S.muted, fontSize: 13 }}>Not yet analyzed</span>}
-              </div>
-              {dataB?.behavioral_summary?.behavioral_pattern_identified && (
-                <div style={{ fontSize: 10, color: S.muted, marginTop: 4, textAlign: isMobile ? "left" : "right" }}>
-                  {dataB.behavioral_summary.behavioral_pattern_identified}
-                </div>
-              )}
+{!dataA && !dataB && !loadingA && !loadingB && (
+          <div style={{ ...maxW, marginBottom: 100 }}>
+            <div style={{ textAlign: "center", padding: isMobile ? "48px 20px" : "72px 40px", border: `1px dashed ${t.border}`, borderRadius: 14 }}>
+              <p className="ft-sans" style={{ fontSize: 13, color: t.textMuted, margin: 0, lineHeight: 1.9 }}>
+                Search two companies above to begin.<br />
+                <span style={{ color: t.textMuted, opacity: 0.7 }}>Structural signals · Market position · Historical analogs · Risk</span>
+              </p>
             </div>
           </div>
         )}
 
-        {/* ── Head-to-head signal grid ── */}
-        {(sigA || sigB) && (
-          <div style={CARD({ display: "flex", flexDirection: "column" })}>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 130px 1fr",
-              paddingBottom: 10,
-              borderBottom: `1px solid ${S.border2}`,
-              marginBottom: 2,
-            }}>
-              <div style={{ textAlign: "right" }}>
-                <span style={{ ...LABEL, color: S.blue }}>{nameA}</span>
-              </div>
-              <div />
-              <div>
-                <span style={{ ...LABEL, color: S.success }}>{nameB}</span>
-              </div>
-            </div>
-            {DIMS.map(dim => (
-              <DimRow key={dim.key} dim={dim} sigA={sigA} sigB={sigB} />
-            ))}
-          </div>
-        )}
-
-        {/* Verdict */}
-        {bothReady && <Verdict dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} />}
-
-        {/* Analog overlap */}
-        {bothReady && <AnalogOverlap dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} />}
-
-        {/* Risk divergence */}
-        {bothReady && <RiskDiff dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} />}
-
-        {/* Behavioral summaries side by side */}
-        {bothReady && <SummaryDiff dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} isMobile={isMobile} />}
-
-        {/* Deep dive links */}
         {bothReady && (
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-            {[
-              { name: nameA, color: S.blue },
-              { name: nameB, color: S.success },
-            ].map(({ name, color }) => (
-              <button
-                key={name}
-                onClick={() => nav(`/results?company=${encodeURIComponent(name)}`)}
-                style={{
-                  background: "transparent",
-                  border: `1px solid ${color}33`,
-                  borderRadius: 6,
-                  padding: "11px 16px",
-                  color,
-                  fontFamily: S.font,
-                  fontSize: 10,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                Full analysis → {name}
-              </button>
-            ))}
-          </div>
-        )}
+          <>
 
-        {/* Empty state */}
-        {!dataA && !dataB && !loadingA && !loadingB && (
-          <div style={{
-            textAlign: "center", color: S.muted,
-            fontSize: 12, padding: "60px 0", lineHeight: 1.9,
-          }}>
-            Search two companies above to compare them.<br />
-            <span style={{ color: S.label }}>Structural signals · Analog overlap · Risk divergence</span>
-          </div>
+            <div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+              <SectionHeading eyebrow="Pillar · Market position" title="How each company sits in its ecosystem" t={t} isMobile={isMobile} />
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+                <MarketPositionCard data={dataA.market_position} t={t} />
+                <MarketPositionCard data={dataB.market_position} t={t} />
+              </div>
+            </div>
+
+<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+              <SectionHeading eyebrow="Pillar · Structural risk" title="What could structurally weaken each company" t={t} isMobile={isMobile} />
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+                <RiskScoreCard structuralScore={dataA.structuralScore} riskMatrix={dataA.riskMatrix} t={t} isMobile={isMobile} />
+                <RiskScoreCard structuralScore={dataB.structuralScore} riskMatrix={dataB.riskMatrix} t={t} isMobile={isMobile} />
+              </div>
+            </div>
+
+<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+              <SectionHeading eyebrow="Head-to-head" title="Structural signals, dimension by dimension" t={t} isMobile={isMobile} />
+              <motion.div variants={v(MV.fadeUp)} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
+                <PremiumCard t={t} style={{ background: t.bgCard }}>
+                  <div style={{ padding: isMobile ? "18px 16px" : "22px 28px" }}>
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 160px 1fr",
+                      paddingBottom: 10,
+                      borderBottom: `1px solid ${t.border}`,
+                      marginBottom: 2,
+                    }}>
+                      <div style={{ textAlign: isMobile ? "left" : "right" }}>
+                        <span className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: VS_ACCENT_A, letterSpacing: "0.6px", textTransform: "uppercase" }}>{nameA}</span>
+                      </div>
+                      {!isMobile && <div />}
+                      <div style={{ textAlign: "right" }}>
+                        <span className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: VS_ACCENT_B, letterSpacing: "0.6px", textTransform: "uppercase" }}>{nameB}</span>
+                      </div>
+                    </div>
+                    {DIMS.map((dim, i) => (
+                      <SignalGridRow key={dim.key} dim={dim} sigA={dataA.structural_signals} sigB={dataB.structural_signals} t={t} isMobile={isMobile} delay={i * 0.05} />
+                    ))}
+                  </div>
+                </PremiumCard>
+              </motion.div>
+            </div>
+
+<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+              <VerdictCard dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} t={t} isMobile={isMobile} />
+            </div>
+
+<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+              <SectionHeading eyebrow="Pillar · Historical analogs" title="What situations does each company resemble" t={t} isMobile={isMobile} />
+              <AnalogSnapshotCard dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} t={t} isMobile={isMobile} />
+            </div>
+
+<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+              <SectionHeading eyebrow="Explainability" title="Why the model reads it this way" t={t} isMobile={isMobile} />
+              <BehavioralSummaryCard dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} t={t} isMobile={isMobile} />
+            </div>
+
+<div style={{ ...maxW, marginBottom: 100 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+                {[{ name: nameA, ticker: dataA.ticker, accent: VS_ACCENT_A }, { name: nameB, ticker: dataB.ticker, accent: VS_ACCENT_B }].map(({ name, ticker, accent }) => (
+                  <motion.button
+                    key={name}
+                    onClick={() => navigate(`/company/${ticker}`)}
+                    whileHover={{ backgroundColor: t.bgSubtle, borderColor: t.borderHover }}
+                    whileTap={{ scale: 0.98 }}
+                    className="ft-sans"
+                    style={{
+                      background: "none", border: `1px solid ${t.border}`, borderRadius: 10,
+                      padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
+                      cursor: "pointer", textAlign: "left", fontFamily: "'DM Sans',sans-serif",
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>
+                      Full structural analysis <span style={{ color: accent }}>· {name}</span>
+                    </span>
+                    <Icon path={ARROW_RIGHT} size={14} color={t.textMuted} />
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          </>
         )}
 
       </div>

@@ -1,133 +1,158 @@
 # ForeTrace
 
-A structural intelligence platform for company analysis. ForeTrace pulls SEC 10-K filings, extracts financial and operational signals, and uses language models to evaluate corporate health, market positioning, and historical analogs.
+<div align="center">
 
-**This is not a stock prediction app, trading bot, or financial dashboard.**  
-It is an explainable intelligence workspace for people who want to understand what a company is actually becoming.
+**A Structural Intelligence Platform for Corporate Analysis**
 
-> **Status: Active development.** Core architecture and analysis workflows are functional. UI and intelligence layers are being iterated on.
+<p align="center">
+  ForeTrace pulls SEC EDGAR corporate filings (Forms 10-K/10-Q), extracts complex financial and operational signals, and leverages large language models to construct transparent, explainable evaluations of corporate health, market positioning, and historical analogies.
+</p>
 
----
+*This is not a stock prediction tool, trading bot, or flashy momentum dashboard. It is a calm, explainable intelligence workspace built for investors and analysts who read the filings.*
 
-## The Core Question
-
-> *What kind of company is this becoming — how structurally healthy is it, what market forces shape it, what historical situations resemble it, and what risks and opportunities emerge from that?*
-
-Most finance tools answer: *what happened?*  
-Some answer: *what may happen?*  
-ForeTrace answers: *what historically similar situations existed, why they mattered, and what structural outcomes followed.*
+</div>
 
 ---
 
-## Screenshots
+##  The Core Question
 
-**Homepage — Structural Intelligence Platform**
+> **"What kind of company is this becoming — how structurally healthy is it, what market forces shape it, what historical situations resemble it, and what risks and opportunities emerge from that?"**
+
+Most modern financial tools focus on **what happened** (backwards-looking data) or attempt to guess **what will happen** (predictions). ForeTrace focuses on **structural configuration**: finding historically similar situations, explaining why they mattered, and outlining the paths they followed.
+
+---
+
+##  Workspace Previews
+
+<details>
+<summary> Click to view platform screenshots</summary>
+
+### 1. Homepage & Explorer
+*A calm, research-oriented starting point featuring featured companies and quick-access profiles.*
 ![Homepage](./screenshots/homepage.png)
 
-**Market Structure Feed — Shifts detected this quarter**
-![Market Structure Feed](./screenshots/market-structure.png)
+### 2. Market Structure Feed
+*Real-time signal tracking highlighting structural shifts detected in the corporate ecosystem.*
+![Market Structure](./screenshots/market-structure.png)
 
-**Analog Engine — History doesn't repeat. But structure does.**
+### 3. Analog Engine
+*Identifies historically similar companies and trajectories using trend fingerprinting—not vibes.*
 ![Analog Engine](./screenshots/analog-engine.png)
 
-**Reasoning Engine — Not a score. A chain of evidence.**
+### 4. Reasoning Engine
+*No black-box assertions. Every evaluation displays a complete chain of evidence and confidence scores.*
 ![Reasoning Engine](./screenshots/reasoning-engine.png)
 
----
-
-## What It Does
-
-**Structural Evaluation** — Financial health, survivability, debt stress, cash flow quality, and operational stability. Can this company survive and remain competitive?
-
-**Market Position Intelligence** — Sector alignment, competitive ecosystem strength, dependency exposure, and structural momentum. How strong is this company within its ecosystem?
-
-**Historical Analog Intelligence** — Identifies historically similar companies and trajectories using trend fingerprinting and DTW similarity search. Pattern matching on extracted data — not vibes.
-
-**Explainable Reasoning** — Every insight surfaces *why* it was generated, *what evidence* supports it, and *what confidence* it carries. No black-box assertions.
-
-**Structural Risk Tracking** — Concentration risks, debt stress, disruption exposure, macro vulnerability. What could structurally weaken this company?
+</details>
 
 ---
 
-## Design Philosophy
+##  Architecture
 
-The user should leave feeling *"I understand this company better now"* — not *"I saw a lot of complicated charts."*
+ForeTrace employs a decoupled architecture where parsing, analysis, and visualization are separated.
 
-- Every visualization explains why it matters, not just what it shows
-- Calm, research-oriented UI — not a trading terminal
-- Explainability is non-negotiable: every output traces back to source data
-- Reliability and clarity before flashy AI or fancy animations
+```mermaid
+graph TD
+    Client[React/Vite Frontend] <-->|WebSockets / REST Fallback| Gateway[FastAPI Backend Gateway]
+    Gateway --> Parser[SEC EDGAR Client & Parser]
+    Gateway --> Analyzer[Groq Llama-3.3-70b-versatile Engine]
+    Parser -->|Ingest 10-K Filings| Extractor[Signal & Financial Extractor]
+    Extractor -->|Divergence & Fingerprints| DTW[DTW Similarity Engine]
+    DTW --> Ranking[Historical Analog Matcher]
+    Analyzer --> Reasoning[Explainable Reasoning Chains]
+    Ranking --> Output[Structured Analysis Payload]
+    Reasoning --> Output
+    Output --> Gateway
+```
 
----
-
-## Architecture
+### Modular Responsibility Layers
 
 | Layer | Responsibility |
-|---|---|
-| Market Data Infrastructure | Ingestion, normalization, macro data, historical storage |
-| Structural Intelligence Engine | Sector correlation, divergence detection, regime classification |
-| Historical Analog Engine | Trend fingerprinting, DTW similarity, analog ranking |
-| Sentiment Intelligence | FinBERT analysis, earnings sentiment, narrative shifts |
-| Risk Intelligence | Bankruptcy risk, concentration risk, debt stress, survivability |
-| Explainability | AI summaries, confidence estimation, evidence surfacing |
-| Security | Auth, RBAC, tenant isolation, encryption, audit logging |
+| :--- | :--- |
+| **Market Data Infrastructure** | Automated ingestion of Form 10-K/10-Q filings, normalization, and caching. |
+| **Structural Intelligence Engine** | Divergence detection, balance sheet stress indicators, and regime classification. |
+| **Historical Analog Engine** | Dynamic Time Warping (DTW) similarity matching on corporate operational trends. |
+| **Sentiment Intelligence** | finBERT analysis of Management Discussion & Analysis (MD&A) narrative shifts. |
+| **Explainable Reasoning** | groq-assisted LLM summarization, confidence estimation, and evidence mapping. |
+| **Security & Isolation** | Strict CORS matching, rate-limiting, and credentials isolation. |
 
 ---
 
-## Stack
+##  Features
 
-**Backend** — FastAPI · Python · SEC EDGAR client · Groq (`llama-3.3-70b-versatile`) · Slowapi
-
-**Frontend** — React (Vite) · Tailwind CSS
+- **Live Streaming Analysis Workspace:** streams real-time parsing and analysis phases using **WebSockets** with an automatic **HTTP REST fallback** mechanism.
+- **Trie-Based Instant Search:** client-side auto-complete search bar powered by an in-memory **Trie data structure** indexing tickers and names.
+- **Side-by-Side Comparator:** allows analysts to evaluate structural metrics, risk profiles, and historical momentum between two companies simultaneously.
+- **Universal Command Palette (`Cmd + K`):** keyboard-friendly navigation hub to traverse pages, search entities, and toggle theme contexts instantly.
+- **Clean Premium Design:** a custom theme system built entirely on CSS design variables, featuring glassmorphism, responsive breakpoint hooks (`useWindowWidth`), and custom SVG visualizers.
 
 ---
 
-## Setup
+##  Getting Started
 
-### 1. Clone
+### Prerequisites
+- Python 3.9 or higher
+- Node.js v18 or higher
+- npm or yarn
 
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/Learner2006/foretrace.git
 cd foretrace
 ```
 
-### 2. Backend
+### 2. Backend Setup
+1. Navigate to the backend directory and set up a virtual environment:
+   ```bash
+   cd backend
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+2. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Configure environment variables in a `.env` file under `backend/`:
+   ```env
+   GROQ_API_KEY=your_groq_api_key_here
+   ```
+4. Start the FastAPI server:
+   ```bash
+   uvicorn main:app --reload
+   ```
 
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-Create `.env` in `backend/`:
-
-```
-GROQ_API_KEY=your_groq_api_key
-```
-
-### 3. Frontend
-
-```bash
-cd ../frontend
-npm install
-npm run dev
-```
+### 3. Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd ../frontend
+   ```
+2. Install npm dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+4. Build the optimized production bundle:
+   ```bash
+   npm run build
+   ```
 
 ---
 
-## Security
+##  Security & Isolation
 
-- Strict CORS origin matching
-- Rate limiting on all business logic routes
-- Environment secrets fully isolated
-- Designed for enterprise-grade use: sensitive filings, confidential evaluations
+- **CORS Configuration:** strict origin matching on backend routes.
+- **Rate Limiting:** integrated slowapi limits on core analysis endpoints.
+- **Isolated Secrets:** no environment variables or API keys are committed or exposed client-side.
+- **Leftover Exclusions:** `.gitignore` blocks deployment configurations, build folders (`dist/`), and node modules.
 
 ---
 
-## What This Platform Will Never Do
+##  Platform Constraints
 
-- Emit buy/sell signals
-- Guarantee predictions
-- Ship models that cannot explain their reasoning
-- Replace analysts or make executive decisions
+To maintain empirical integrity, ForeTrace will **never**:
+1. **Emit buy/sell recommendations:** we supply evidence and historical analogies; the interpretation is up to the analyst.
+2. **Present black-box conclusions:** every AI summary or classification must map to source SEC text/data.
+3. **Make absolute predictions:** we model trajectories and similarity indices rather than speculatively projecting numbers.

@@ -1,92 +1,91 @@
-```markdown
-# ForeTrace
+# ForeTrace 📊
 
-ForeTrace is an enterprise-grade company behavior intelligence platform. It pulls SEC 10-K filings, extracts complex financial data and textual operational indicators locally, and processes them using advanced language models to evaluate long-term corporate health, market positioning, and historical structural analogs.
+> **Structured Equity Intelligence from SEC Filings**
 
-**This platform is NOT a stock prediction app, trading bot, or speculative financial dashboard. It is an explainable corporate intelligence workspace.**
+ForeTrace is a premium, high-fidelity investment research dashboard that surfaces structural health patterns, revenue concentration risks, and historical analogs directly from SEC corporate filings (Form 10-K, 10-Q). 
 
----
-
-## 🎯 The North Star Question
-> *"What kind of company is this becoming, how structurally healthy is it, what market forces shape it, what historical situations resemble it, and what risks/opportunities emerge from that comparison?"*
+Built for investors who read the filings, it replaces surface-level summaries with structured data extraction powered by FastAPI, Groq API, and React.
 
 ---
 
-## 🚀 Core Product Pillars
+## ✨ Core Features
 
-1. **Structural Company Evaluation:** Assessing operational stability, debt stress, cash flow quality, and overall survivability.
-2. **Market Position Intelligence:** Evaluating sector alignment, competitive ecosystem strength, and structural momentum.
-3. **Historical Analog Intelligence:** Identifying historically similar market patterns, trajectories, and temporal comparisons using trend fingerprinting.
-4. **Explainable AI Reasoning:** Every insight surfaces *why* it was generated, culling facts directly from extracted data rather than black-box AI assertions.
-5. **Structural Risk Intelligence:** Tracking macro vulnerabilities, concentration risks, and structural weaknesses.
-
----
-
-## 🛠️ Architecture & Tech Stack
-
-### Backend
-- **FastAPI / Python:** Robust, asynchronous API endpoints.
-- **SEC EDGAR Client:** High-efficiency local SEC filing fetcher and keyword extractor.
-- **Groq Inference Engine:** Utilizing prod-grade `llama-3.3-70b-versatile` for high-fidelity financial reasoning.
-- **Slowapi:** Local security layer handling rate-limiting and access policies.
-
-### Frontend
-- **React (Vite):** Minimal, high-performance, responsive workspace layout.
-- **Tailwind CSS / Custom Styling:** Low-friction, non-chaotic, academic/research-oriented UI aesthetics.
+*   **Live Analysis Workspace**: Streams real-time parsing phases using **WebSockets** with automatic **HTTP REST fallback** mechanisms if socket connections are unavailable.
+*   **Company Explorer**: Entity lookup workspace showcasing featured tickers, search historical structures, and quick-access profiles.
+*   **Side-by-Side Comparator**: Evaluates structural metrics, momentum shifts, and risk profiles between two companies concurrently.
+*   **Client-Side Trie Search**: Fast auto-complete search bar powered by an in-memory **Trie data structure** indexing company names and tickers.
+*   **Command Palette (`Cmd + K`)**: Keyboard-friendly navigation hub to traverse pages, search entities, and toggle dark/light theme contexts instantly.
+*   **Premium Interactive Design**: Glassmorphic UI featuring custom 3D card tilt effects, confidence score rings, SVG sparklines, and theme transitions.
 
 ---
 
-## 📦 Installation & Setup
+## 🛠️ Technology Stack
 
-### 1. Clone & Setup Repository
-```bash
-git clone [https://github.com/Learner2006/foretrace.git](https://github.com/Learner2006/foretrace.git)
-cd foretrace
+*   **Core**: React, Vite, ES Modules.
+*   **Animations**: Framer Motion (for smooth component collapses, list enters, and layout transitions).
+*   **Styling**: Vanilla CSS with custom theme variables.
+*   **State / Context**: Single source of truth context provider for theme configuration (`useTheme`) and breakpoints (`useWindowWidth`).
+*   **Backend Interface**: FastAPI connection via WebSocket and HTTP endpoints.
 
-```
+---
 
-### 2. Backend Environment Configuration
+## 📂 Project Structure
 
-Navigate to the backend, spin up a virtual environment, and install dependencies:
+The project follows a clean, decoupled component architecture:
 
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-```
-
-Create a `.env` file inside the `backend/` directory:
-
-```env
-GROQ_API_KEY=your_actual_groq_api_key_here
-
-```
-
-### 3. Frontend Environment Configuration
-
-Navigate to the frontend directory and install Node modules:
-
-```bash
-cd ../frontend
-npm install
-
+```text
+src/
+├── components/
+│   ├── layout/       # Global shells (Nav, Footer, ScrollProgress, CommandPalette)
+│   ├── ui/           # Reusable UI Primitives, Cards, and SearchBar
+│   └── company/      # Company-specific views (CompanyProfile, StructuralHealthCard, AnalogCard)
+├── hooks/            # Custom hooks (useTheme, useWindowWidth)
+├── layouts/          # Root page shells (MainLayout)
+├── pages/            # Page routers (HomePage, AnalysisPage, ComparePage, WatchlistPage, UpgradePage)
+├── styles/           # CSS animation assets, theme tokens, and data models
+├── App.jsx           # Router declarations
+└── main.jsx          # Entrypoint
 ```
 
 ---
 
-## 🚦 UI & Design Principles
+## 🚀 Getting Started
 
-* **Explanation Beside Visualization:** No raw charts without context. Every chart must explicitly tell the user why they should care.
-* **Calm over Chaotic:** Absolute rejection of the high-frequency retail trading aesthetics. The UI functions as an objective intelligence briefing.
+### Prerequisites
 
-## 🔒 Security Posture
+*   Node.js (v18 or higher)
+*   npm or yarn
 
-* Explicit, safe CORS origin matching.
-* API rate-limiting enforced on business logic routes.
-* Strict isolation of environmental secrets.
+### Installation
 
-```
+1.  **Clone the repository** and navigate to the frontend directory:
+    ```bash
+    cd frontend
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Configure environment variables**:
+    Create a `.env` file in the root directory:
+    ```env
+    VITE_API_URL=http://localhost:8000
+    ```
+
+4.  **Start the development server**:
+    ```bash
+    npm run dev
+    ```
+
+5.  **Build for production**:
+    ```bash
+    npm run build
+    ```
 
 ---
+
+## 💡 Portability & Server Configuration
+
+To prevent build issues when deploying on Linux-based container platforms (Netlify, Vercel, AWS Amplify, Docker), the project enforces **Strict PascalCase file naming conventions** matching all ES imports.
