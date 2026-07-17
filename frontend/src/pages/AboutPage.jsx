@@ -210,7 +210,7 @@ function CreatorInfo({ t, isMobile }) {
             Intelligence layer ·
           </span>
           <span className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textSub }}>
-            Claude · Anthropic
+            Groq
           </span>
         </motion.div>
       </motion.div>
