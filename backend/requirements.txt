@@ -1,6 +1,12 @@
-fastapi
-uvicorn
-httpx
-python-dotenv
-yfinance
+fastapi 
 slowapi
+uvicorn 
+httpx 
+beautifulsoup4 
+lxml
+python-dotenv 
+pydantic 
+yfinance 
+python-multipart
+websockets
+pydantic-settings

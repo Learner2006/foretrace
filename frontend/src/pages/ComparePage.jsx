@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -8,7 +9,6 @@ import SearchBar from "../components/ui/SearchBar";
 import { ProBadge } from "../components/layout/Shell";
 import { useTheme } from "../hooks/useTheme";
 import MarketPositionCard from "../components/company/MarketPositionCard";
-import RiskScoreCard from "../components/company/RiskScoreCard";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -84,7 +84,7 @@ function shapeCompareData(raw, ticker) {
   const bs = raw.behavioral_summary ?? {};
   const mp = raw.market_position ?? {};
   const sr = raw.structural_risk ?? {};
-  const sigs = raw.structural_signals ?? raw.signals ?? {};
+  const sigs = raw.signals ?? {};
   const analogs = raw.analogs ?? raw.behavioral_analogs ?? [];
 
   const confidence = bs.confidence ?? "Moderate";
@@ -471,11 +471,45 @@ export default function ComparePage() {
 
 {!dataA && !dataB && !loadingA && !loadingB && (
           <div style={{ ...maxW, marginBottom: 100 }}>
-            <div style={{ textAlign: "center", padding: isMobile ? "48px 20px" : "72px 40px", border: `1px dashed ${t.border}`, borderRadius: 14 }}>
-              <p className="ft-sans" style={{ fontSize: 13, color: t.textMuted, margin: 0, lineHeight: 1.9 }}>
-                Search two companies above to begin.<br />
-                <span style={{ color: t.textMuted, opacity: 0.7 }}>Structural signals · Market position · Historical analogs · Risk</span>
+            <div style={{ textAlign: "center", padding: isMobile ? "48px 20px" : "72px 40px", border: `1px dashed ${t.border}`, borderRadius: 14, background: t.bgSubtle }}>
+              <p className="ft-serif" style={{ fontSize: 22, color: t.text, margin: "0 0 8px", fontWeight: 400 }}>
+                Start a comparison
               </p>
+              <p className="ft-sans" style={{ fontSize: 14, color: t.textMuted, margin: "0 0 32px", lineHeight: 1.6 }}>
+                Search two companies above to analyze their structural health, market positioning, and historical analogs side-by-side.
+              </p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+                <p className="ft-sans" style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 600, margin: 0 }}>
+                  Suggested Matchups
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
+                  {[
+                    { a: "TSLA", nameA: "Tesla", b: "BYDDY", nameB: "BYD" },
+                    { a: "INTC", nameA: "Intel", b: "AMD", nameB: "AMD" },
+                    { a: "NFLX", nameA: "Netflix", b: "DIS", nameB: "Disney" }
+                  ].map((pair, i) => (
+                    <motion.button
+                      key={i}
+                      onClick={() => {
+                        fetchSide(pair.a, pair.nameA, "A");
+                        fetchSide(pair.b, pair.nameB, "B");
+                      }}
+                      whileHover={{ scale: 1.02, backgroundColor: t.bgCard, borderColor: t.borderHover }}
+                      whileTap={{ scale: 0.98 }}
+                      style={{
+                        background: "none", border: `1px solid ${t.border}`, borderRadius: 30,
+                        padding: "8px 16px", display: "flex", alignItems: "center", gap: 10,
+                        cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 600, color: VS_ACCENT_A }}>{pair.a}</span>
+                      <span style={{ fontSize: 11, color: t.textMuted, fontStyle: "italic" }}>vs</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: VS_ACCENT_B }}>{pair.b}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -491,13 +525,7 @@ export default function ComparePage() {
               </div>
             </div>
 
-<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
-              <SectionHeading eyebrow="Pillar · Structural risk" title="What could structurally weaken each company" t={t} isMobile={isMobile} />
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-                <RiskScoreCard structuralScore={dataA.structuralScore} riskMatrix={dataA.riskMatrix} t={t} isMobile={isMobile} />
-                <RiskScoreCard structuralScore={dataB.structuralScore} riskMatrix={dataB.riskMatrix} t={t} isMobile={isMobile} />
-              </div>
-            </div>
+
 
 <div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
               <SectionHeading eyebrow="Head-to-head" title="Structural signals, dimension by dimension" t={t} isMobile={isMobile} />
@@ -546,7 +574,7 @@ export default function ComparePage() {
                 {[{ name: nameA, ticker: dataA.ticker, accent: VS_ACCENT_A }, { name: nameB, ticker: dataB.ticker, accent: VS_ACCENT_B }].map(({ name, ticker, accent }) => (
                   <motion.button
                     key={name}
-                    onClick={() => navigate(`/company/${ticker}`)}
+                    onClick={() => navigate(`/AnalysisPage?ticker=${ticker}&name=${name}`)}
                     whileHover={{ backgroundColor: t.bgSubtle, borderColor: t.borderHover }}
                     whileTap={{ scale: 0.98 }}
                     className="ft-sans"

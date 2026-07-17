@@ -36,19 +36,33 @@ export default function CompanyProfile({ data, t }) {
 
 <div style={{ padding: isMobile ? "20px 16px" : "24px 28px" }}>
 
-<p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
-          What is happening
+        <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
+          Current structural shift
         </p>
-        <p className="ft-sans" style={{ fontSize: 13, color: t.textSub, lineHeight: 1.7, margin: 0, fontWeight: 300 }}>{bs.what_is_happening || "—"}</p>
+        <p className="ft-sans" style={{ fontSize: 13, color: t.text, lineHeight: 1.7, margin: "0 0 8px", fontWeight: 500 }}>{bs.observation || "—"}</p>
+        {bs.evidence && (
+          <p className="ft-sans" style={{ fontSize: 12, color: t.textSub, lineHeight: 1.6, margin: "0 0 12px", fontStyle: "italic", background: t.bgMuted, padding: "8px 12px", borderRadius: 6 }}>
+            <span style={{ fontWeight: 600, color: t.textMuted }}>Evidence: </span>{bs.evidence}
+          </p>
+        )}
 
         <Divider t={t} />
 
-<p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
+        <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
           Why it matters
         </p>
-        <p className="ft-sans" style={{ fontSize: 13, color: t.textSub, lineHeight: 1.7, margin: 0, fontWeight: 300 }}>{bs.why_it_matters || "—"}</p>
+        <p className="ft-sans" style={{ fontSize: 13, color: t.textSub, lineHeight: 1.7, margin: "0 0 8px", fontWeight: 300 }}>{bs.why_it_matters || "—"}</p>
+        {bs.future_implication && (
+          <p className="ft-sans" style={{ fontSize: 12, color: t.text, lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
+            <span style={{ fontWeight: 600, color: t.textMuted }}>Future Implication: </span>{bs.future_implication}
+          </p>
+        )}
 
-{bs.key_forces?.length > 0 && (
+        {bs.source && (
+          <p className="ft-sans" style={{ fontSize: 9, color: t.textMuted, margin: "8px 0 0", textAlign: "right" }}>Source: {bs.source}</p>
+        )}
+
+        {bs.key_forces?.length > 0 && (
           <>
             <Divider t={t} />
             <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
@@ -62,7 +76,7 @@ export default function CompanyProfile({ data, t }) {
           </>
         )}
 
-{bs.confidence_reason && (
+        {bs.confidence_reason && (
           <>
             <Divider t={t} />
             <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
@@ -72,7 +86,7 @@ export default function CompanyProfile({ data, t }) {
           </>
         )}
 
-{risks.length > 0 && (
+        {risks.length > 0 && (
           <>
             <Divider t={t} />
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
@@ -83,16 +97,36 @@ export default function CompanyProfile({ data, t }) {
             </div>
             <motion.div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {risks.map((r, i) => {
-                const signal = typeof r === "string" ? r : r.signal;
-                const reason = typeof r === "string" ? null : r.why_it_matters;
+                const signal = r.observation || r.signal || "—";
                 return (
                   <motion.div key={i} initial={{ opacity: 0, x: -8 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.3, ease: EASE_OUT_EXPO }}
-                    style={{ paddingLeft: 14, borderLeft: `2px solid ${t.warning}44` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: t.warning, flexShrink: 0, display: "inline-block" }} />
-                      <span className="ft-sans" style={{ fontSize: 12, color: t.warning, fontWeight: 600, letterSpacing: "0.03em" }}>{signal}</span>
+                    style={{ paddingLeft: 14, borderLeft: `2px solid ${t.warning}44`, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: t.warning, flexShrink: 0, display: "inline-block" }} />
+                        <span className="ft-sans" style={{ fontSize: 12, color: t.warning, fontWeight: 600, letterSpacing: "0.03em" }}>{signal}</span>
+                      </div>
+                      {r.probability && (
+                        <span className="ft-sans" style={{ fontSize: 9, color: t.textMuted, border: `1px solid ${t.border}`, padding: "1px 6px", borderRadius: 3, textTransform: "uppercase", fontWeight: 600 }}>
+                          Prob: {r.probability}
+                        </span>
+                      )}
                     </div>
-                    {reason && <p className="ft-sans" style={{ fontSize: 12, color: t.textSub, margin: 0, lineHeight: 1.65, fontWeight: 300 }}>{reason}</p>}
+                    {r.why_it_matters && (
+                      <p className="ft-sans" style={{ fontSize: 12, color: t.text, margin: 0, lineHeight: 1.65, fontWeight: 500 }}>
+                        {r.why_it_matters}
+                      </p>
+                    )}
+                    {r.evidence && (
+                      <p className="ft-sans" style={{ fontSize: 12, color: t.textSub, margin: 0, lineHeight: 1.6, fontWeight: 300, fontStyle: "italic" }}>
+                        <span style={{ fontWeight: 600, color: t.textMuted }}>Evidence: </span>{r.evidence}
+                      </p>
+                    )}
+                    {r.mitigation && (
+                      <p className="ft-sans" style={{ fontSize: 11, color: t.positive, margin: 0, lineHeight: 1.5, background: `${t.positive}11`, padding: "6px 10px", borderRadius: 4 }}>
+                        <span style={{ fontWeight: 600 }}>Mitigation: </span>{r.mitigation}
+                      </p>
+                    )}
                   </motion.div>
                 );
               })}

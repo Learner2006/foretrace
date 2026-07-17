@@ -34,7 +34,7 @@ export default function AnalogCard({ t, analog, isMobile, vfn }) {
           borderLeft:  `3px solid ${ts.borderLeft}`,
           cursor:      hasLink ? "pointer" : "default",
         }}
-        onClick={() => hasLink && navigate(`/company/${analog.analog_ticker}`)}
+        onClick={() => hasLink && navigate(`/AnalysisPage?ticker=${analog.analog_ticker}&name=${analog.analog_ticker}`)}
       >
 
 <div style={{background:t.bgSubtle, borderBottom:`1px solid ${t.border}`, padding:"10px 20px 10px 24px", display:"flex", alignItems:"center", justifyContent:"space-between"}}>
@@ -133,7 +133,7 @@ export default function AnalogCard({ t, analog, isMobile, vfn }) {
                 </motion.button>
                 {hasLink
                   ? <motion.button
-                      onClick={e => { e.stopPropagation(); navigate(`/company/${analog.analog_ticker}`); }}
+                      onClick={e => { e.stopPropagation(); navigate(`/AnalysisPage?ticker=${analog.analog_ticker}&name=${analog.analog_ticker}`); }}
                       whileHover={{backgroundColor:t.bgMuted, borderColor:t.borderHover}}
                       style={{background:"none", border:`1px solid ${t.border}`, borderRadius:7, padding:"6px 14px", fontSize:11, fontWeight:600, color:ts.accent, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", display:"flex", alignItems:"center", gap:5}}>
                       View company <Icon path="M9 18l6-6-6-6" size={10} color="currentColor" />
@@ -181,6 +181,20 @@ export default function AnalogCard({ t, analog, isMobile, vfn }) {
                     <div>
                       <p className="ft-sans" style={{fontSize:10, fontWeight:600, color:t.textMuted, letterSpacing:"0.8px", textTransform:"uppercase", margin:"0 0 4px"}}>What makes it imperfect</p>
                       <p className="ft-sans" style={{fontSize:12, color:t.textSub, lineHeight:1.7, margin:0, fontWeight:300}}>{analog.key_difference}</p>
+                    </div>
+                  )}
+
+                  {analog.lessons_learned && (
+                    <div>
+                      <p className="ft-sans" style={{fontSize:10, fontWeight:600, color:t.textMuted, letterSpacing:"0.8px", textTransform:"uppercase", margin:"0 0 4px"}}>Lessons learned</p>
+                      <p className="ft-sans" style={{fontSize:12, color:t.textSub, lineHeight:1.7, margin:0, fontWeight:300}}>{analog.lessons_learned}</p>
+                    </div>
+                  )}
+
+                  {analog.invalidation_triggers && (
+                    <div>
+                      <p className="ft-sans" style={{fontSize:10, fontWeight:600, color:t.textMuted, letterSpacing:"0.8px", textTransform:"uppercase", margin:"0 0 4px"}}>What could invalidate this comparison</p>
+                      <p className="ft-sans" style={{fontSize:12, color:t.textSub, lineHeight:1.7, margin:0, fontWeight:300}}>{analog.invalidation_triggers}</p>
                     </div>
                   )}
 

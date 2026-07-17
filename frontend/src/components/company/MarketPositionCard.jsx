@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { PremiumCard, SignalBadge, Icon } from "../ui/UI";
@@ -114,7 +115,7 @@ const strengthVal = dir === "up" ? 78 : dir === "neutral" ? 52 : 28;
               className="ft-serif"
               style={{ fontSize: isMobile ? 18 : 22, color: t.text, margin: "0 0 8px", lineHeight: 1.2, fontWeight: 400 }}
             >
-              {data.sector_standing}
+              {data.sector_standing || (data.relative_rank ? `${data.relative_rank.charAt(0).toUpperCase() + data.relative_rank.slice(1)} · ${data.trajectory}` : "Market Position")}
             </motion.p>
 
 <StrengthBar value={strengthVal} color={accent} t={t} />

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { motion, useReducedMotion } from "framer-motion";
 import { SectionLabel, Dot, Divider } from "../components/ui/Primitives";
 import { useBreakpoint } from "../hooks/useWindowWidth";

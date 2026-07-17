@@ -4,8 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import SearchBar            from "../components/ui/SearchBar";
 import CompanyProfile       from "../components/company/CompanyProfile";
 import AnalogCard           from "../components/company/AnalogCard";
-import StructuralHealthCard from "../components/company/StructuralHealthCard";
+
 import MarketPositionCard   from "../components/company/MarketPositionCard";
+import ReasoningChainCard   from "../components/company/ReasoningChainCard";
+import RiskSignalsCard      from "../components/company/RiskSignalsCard";
+import RelationshipContextCard from "../components/company/RelationshipContextCard";
+import MarketPulseMatrix    from "../components/ui/MarketPulseMatrix";
 import { PremiumCard, Icon } from "../components/ui/UI";
 import { MV, v, EASE_OUT_EXPO } from "../styles/animations";
 import { useWindowWidth }    from "../hooks/useWindowWidth";
@@ -17,6 +21,9 @@ const STEPS = [
   "Finding historical analogs...",
   "Building analysis...",
 ];
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+const WS_BASE = API_BASE.replace(/^http/, "ws");
 
 const ERROR_MAP = [
   [["SEC EDGAR pe nahi mili","not found"],   "Company not found on SEC EDGAR",      "Try the ticker directly — e.g. AAPL instead of Apple Inc."],
@@ -552,47 +559,21 @@ function ActiveWorkspace({ result, state, loading, error, step, t, isMobile, onS
               <CompanyProfile data={result} t={t} />
             </motion.div>
 
-{result.structural_signals && (
-              <motion.div custom={2} variants={cardVariants} initial="hidden" animate="visible">
-                <SectionHead label="Structural signals" title="Internal forces at work." isMobile={isMobile} t={t} />
-                <StructuralHealthCard signals={result.structural_signals} structural_risk={result.structural_risk} t={t} />
-              </motion.div>
-            )}
-
-{result.market_position && (
+            {result.market_position && (
               <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible">
                 <SectionHead label="Market position" title="Sector standing & momentum." isMobile={isMobile} t={t} />
                 <MarketPositionCard data={result.market_position} t={t} />
               </motion.div>
             )}
 
-{result.analogs?.length > 0 && (
-              <motion.div custom={4} variants={cardVariants} initial="hidden" animate="visible">
-                <SectionHead label="Analog engine" title="History doesn't repeat. But structure does." isMobile={isMobile} t={t} />
-                <PremiumCard t={t} style={{ background: t.bgCard }} noLift>
-                  <div style={{ background: t.bgSubtle, borderBottom: `1px solid ${t.border}`, padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <motion.div animate={{ opacity: [1, 0.45, 1] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                        style={{ width: 6, height: 6, borderRadius: "50%", background: t.positive, flexShrink: 0 }} />
-                      <span className="ft-sans" style={{ fontSize: 11, color: t.textSub, fontWeight: 500 }}>
-                        Analog Engine · Structural match report
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="ft-sans" style={{ fontSize: 10, color: t.textMuted }}>{result.analogs.length} matches found</span>
-                      <span className="ft-sans" style={{ fontSize: 9, fontWeight: 700, background: t.text, color: t.bg, padding: "1px 7px", borderRadius: 3, letterSpacing: "0.3px" }}>PRO</span>
-                    </div>
-                  </div>
-                  <div style={{ padding: isMobile ? "20px 16px" : "24px 28px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-                      {result.analogs.map((a, i) => <AnalogCard key={i} analog={a} t={t} />)}
-                    </div>
-                  </div>
-                </PremiumCard>
+            {result.structural_signals?.length > 0 && (
+              <motion.div custom={2} variants={cardVariants} initial="hidden" animate="visible">
+                <SectionHead label="Reasoning engine" title="Not a score. A chain of evidence." isMobile={isMobile} t={t} />
+                <ReasoningChainCard signals={result.structural_signals} companyName={result.company} t={t} isMobile={isMobile} />
               </motion.div>
             )}
 
-{(result.structural_thesis || result.reasoning_steps?.length > 0) && (
+            {(result.structural_thesis || result.reasoning_steps?.length > 0) && (
               <motion.div custom={5} variants={cardVariants} initial="hidden" animate="visible">
                 <SectionHead label="Structural thesis" title="What the evidence implies." isMobile={isMobile} t={t} />
                 <PremiumCard t={t} style={{ background: t.bgCard }} noLift>
@@ -653,7 +634,52 @@ function ActiveWorkspace({ result, state, loading, error, step, t, isMobile, onS
               </motion.div>
             )}
 
-{result.mitigation_levers?.length > 0 && (
+            {result.risk_signals?.length > 0 && (
+              <motion.div custom={2.5} variants={cardVariants} initial="hidden" animate="visible">
+                <SectionHead label="Risk signals" title="Vulnerabilities & structural threats." isMobile={isMobile} t={t} />
+                <RiskSignalsCard signals={result.risk_signals} t={t} />
+              </motion.div>
+            )}
+
+            {result.relationship_context && result.relationship_context.insight && (
+              <motion.div custom={2.7} variants={cardVariants} initial="hidden" animate="visible">
+                <SectionHead label="Relationship Context" title="Dependencies and ecosystem." isMobile={isMobile} t={t} />
+                <RelationshipContextCard data={result.relationship_context} t={t} />
+              </motion.div>
+            )}
+
+            <motion.div custom={7.5} variants={cardVariants} initial="hidden" animate="visible">
+              <SectionHead label="Market landscape" title="Broader structural shifts." isMobile={isMobile} t={t} />
+              <MarketPulseMatrix t={t} isMobile={isMobile} />
+            </motion.div>
+
+            {result.analogs?.length > 0 && (
+              <motion.div custom={4} variants={cardVariants} initial="hidden" animate="visible">
+                <SectionHead label="Analog engine" title="History doesn't repeat. But structure does." isMobile={isMobile} t={t} />
+                <PremiumCard t={t} style={{ background: t.bgCard }} noLift>
+                  <div style={{ background: t.bgSubtle, borderBottom: `1px solid ${t.border}`, padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <motion.div animate={{ opacity: [1, 0.45, 1] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                        style={{ width: 6, height: 6, borderRadius: "50%", background: t.positive, flexShrink: 0 }} />
+                      <span className="ft-sans" style={{ fontSize: 11, color: t.textSub, fontWeight: 500 }}>
+                        Analog Engine · Structural match report
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span className="ft-sans" style={{ fontSize: 10, color: t.textMuted }}>{result.match_count || (result.analogs && result.analogs[0]?.matchCount) || 2} matches found</span>
+                      <span className="ft-sans" style={{ fontSize: 9, fontWeight: 700, background: t.text, color: t.bg, padding: "1px 7px", borderRadius: 3, letterSpacing: "0.3px" }}>PRO</span>
+                    </div>
+                  </div>
+                  <div style={{ padding: isMobile ? "20px 16px" : "24px 28px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+                      {result.analogs.map((a, i) => <AnalogCard key={i} analog={a} t={t} />)}
+                    </div>
+                  </div>
+                </PremiumCard>
+              </motion.div>
+            )}
+
+            {result.mitigation_levers?.length > 0 && (
               <motion.div custom={6} variants={cardVariants} initial="hidden" animate="visible">
                 <SectionHead label="Strategic levers" title="What this company can do." isMobile={isMobile} t={t} />
                 <PremiumCard t={t} style={{ background: t.bgCard }} noLift>
@@ -704,7 +730,7 @@ function ActiveWorkspace({ result, state, loading, error, step, t, isMobile, onS
               </motion.div>
             )}
 
-<motion.div custom={7} variants={cardVariants} initial="hidden" animate="visible">
+            <motion.div custom={7} variants={cardVariants} initial="hidden" animate="visible">
               <SectionHead label="Live feed" title="Structural activity continues." isMobile={isMobile} t={t} />
               <PremiumCard t={t} style={{ background: t.bgCard }} noLift>
                 <div style={{ background: t.bgSubtle, borderBottom: `1px solid ${t.border}`, padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -722,7 +748,7 @@ function ActiveWorkspace({ result, state, loading, error, step, t, isMobile, onS
               </PremiumCard>
             </motion.div>
 
-<motion.div custom={8} variants={cardVariants} initial="hidden" animate="visible">
+            <motion.div custom={8} variants={cardVariants} initial="hidden" animate="visible">
               <PremiumCard t={t} style={{ background: t.bgSubtle }}>
                 <div style={{ padding: isMobile ? "24px 16px" : "32px 36px", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", gap: isMobile ? 16 : 32, justifyContent: "space-between" }}>
                   <div>
@@ -795,7 +821,7 @@ export default function AnalysisPage() {
     let wsConnected = false;
     let fallbackTriggered = false;
 
-    // The backend insists on this format. We don't argue with the backend.
+    // fallback if ws blocked by firewall/proxy
     const triggerHttpFallback = async () => {
       if (fallbackTriggered) return;
       fallbackTriggered = true;
@@ -808,7 +834,7 @@ export default function AnalysisPage() {
       }, 3500);
 
       try {
-        const res = await fetch("http://127.0.0.1:8000/analyze", {
+        const res = await fetch(`${API_BASE}/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ company_name: companyName, ticker }),
@@ -827,8 +853,8 @@ export default function AnalysisPage() {
     };
 
     try {
-      // If you're reading this because something broke... I'm sorry.
-      const wsUrl = `ws://127.0.0.1:8000/ws/analyze/${ticker.toUpperCase()}`;
+      // try ws first for live pipeline progress
+      const wsUrl = `${WS_BASE}/ws/analyze/${ticker.toUpperCase()}`;
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
@@ -849,6 +875,7 @@ export default function AnalysisPage() {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "step") {
+            // step maps to STEPS index (0: SEC, 1: L1 engines, 2: L2 engines, 3: synthesis)
             setStep(msg.step);
           } else if (msg.type === "result") {
             setResult(msg.data);
@@ -880,12 +907,19 @@ export default function AnalysisPage() {
     }
   }, []);
 
-  // Kick off if arriving from router state (e.g. from HomePage)
+  // Kick off if arriving from router state (e.g. from HomePage) or URL query parameters
   useEffect(() => {
     let timerId;
-    if (state?.ticker) {
+    const params = new URLSearchParams(window.location.search);
+    const qTicker = params.get("ticker");
+    const qName = params.get("name");
+
+    const activeTick = state?.ticker || qTicker;
+    const activeNm = state?.companyName || qName;
+
+    if (activeTick) {
       timerId = setTimeout(() => {
-        runAnalysis(state.ticker, state.companyName);
+        runAnalysis(activeTick, activeNm || activeTick);
       }, 0);
     }
     return () => {

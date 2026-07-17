@@ -137,6 +137,6 @@ const TICKER_MAP = {
 
 export const CMD_ITEMS = [
   { group:"Navigate",   items: NAV_ITEMS.map(n => ({ label:n.label, sub:"Page", path:n.path })) },
-  { group:"Companies",  items: [...COVERAGE,"Spotify","Adobe","Salesforce","Samsung"].map(c => ({ label:c, sub:"Company", path: `/company/${TICKER_MAP[c] ?? c.toUpperCase()}` })) },
+  { group:"Companies",  items: [...COVERAGE,"Spotify","Adobe","Salesforce","Samsung"].map(c => ({ label:c, sub:"Company", path: `/AnalysisPage?ticker=${TICKER_MAP[c] ?? c.toUpperCase()}&name=${encodeURIComponent(c)}` })) },
   { group:"Actions",    items:[ { label:"Toggle theme", sub:"Shortcut", action:"theme" }, { label:"Upgrade to Pro", sub:"Account", path:"/upgrade" } ]},
 ];

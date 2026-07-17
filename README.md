@@ -1,158 +1,150 @@
-# ForeTrace
-
 <div align="center">
-
-**A Structural Intelligence Platform for Corporate Analysis**
-
-<p align="center">
-  ForeTrace pulls SEC EDGAR corporate filings (Forms 10-K/10-Q), extracts complex financial and operational signals, and leverages large language models to construct transparent, explainable evaluations of corporate health, market positioning, and historical analogies.
-</p>
-
-*This is not a stock prediction tool, trading bot, or flashy momentum dashboard. It is a calm, explainable intelligence workspace built for investors and analysts who read the filings.*
-
+  <h1>ForeTrace</h1>
+  <p><strong>Forensic structural analysis of public companies.</strong></p>
 </div>
 
----
+> **Engineering Note:** For frictionless technical review, this build keeps focus entirely on the AI reasoning pipeline — SEC filing → structural analysis → historical analogs. User authentication and database persistence are deliberately out of scope. Compare and Pro-tier UI demonstrate the intended production shape but are stateless by design.
 
-##  The Core Question
-
-> **"What kind of company is this becoming — how structurally healthy is it, what market forces shape it, what historical situations resemble it, and what risks and opportunities emerge from that?"**
-
-Most modern financial tools focus on **what happened** (backwards-looking data) or attempt to guess **what will happen** (predictions). ForeTrace focuses on **structural configuration**: finding historically similar situations, explaining why they mattered, and outlining the paths they followed.
+![ForeTrace Homepage](screenshots/homepage.png)
 
 ---
 
-##  Workspace Previews
+## The Thesis
 
-<details>
-<summary> Click to view platform screenshots</summary>
+ForeTrace is **not** a stock predicting tool. The internet is already full of excellent tools designed to forecast short-term price movements and analyze market momentum.
 
-### 1. Homepage & Explorer
-*A calm, research-oriented starting point featuring featured companies and quick-access profiles.*
-![Homepage](./screenshots/homepage.png)
-
-### 2. Market Structure Feed
-*Real-time signal tracking highlighting structural shifts detected in the corporate ecosystem.*
-![Market Structure](./screenshots/market-structure.png)
-
-### 3. Analog Engine
-*Identifies historically similar companies and trajectories using trend fingerprinting—not vibes.*
-![Analog Engine](./screenshots/analog-engine.png)
-
-### 4. Reasoning Engine
-*No black-box assertions. Every evaluation displays a complete chain of evidence and confidence scores.*
-![Reasoning Engine](./screenshots/reasoning-engine.png)
-
-</details>
+Instead, ForeTrace is a deep **structural company analyzer**. It ignores stock prices and focuses entirely on business integrity. It assumes baseline competence and acts as a skeptical forensic strategist to uncover eroding moats, dangerous strategic pivots, and historical analogies buried deep within SEC 10-K filings.
 
 ---
 
-##  Architecture
+##  Key Features
 
-ForeTrace employs a decoupled architecture where parsing, analysis, and visualization are separated.
+- **Structural Extraction:** Strips away management fluff to identify the true behavioral pattern of a business.
+- **The Analog Engine:** Matches current trajectories against historical successes and failures (e.g., "Structurally resembles BlackBerry in 2008").
+- **Head-to-Head Compare:** Forces two companies into a structural battle to map diverging moats.
+- **Dynamic AI Routing:** Fault-tolerant orchestration cascading through Llama 3.3, Llama 3.1, and DeepSeek based on API availability.
 
-```mermaid
-graph TD
-    Client[React/Vite Frontend] <-->|WebSockets / REST Fallback| Gateway[FastAPI Backend Gateway]
-    Gateway --> Parser[SEC EDGAR Client & Parser]
-    Gateway --> Analyzer[Groq Llama-3.3-70b-versatile Engine]
-    Parser -->|Ingest 10-K Filings| Extractor[Signal & Financial Extractor]
-    Extractor -->|Divergence & Fingerprints| DTW[DTW Similarity Engine]
-    DTW --> Ranking[Historical Analog Matcher]
-    Analyzer --> Reasoning[Explainable Reasoning Chains]
-    Ranking --> Output[Structured Analysis Payload]
-    Reasoning --> Output
-    Output --> Gateway
+---
+
+##  Screenshots
+
+### Reasoning Engine
+![Reasoning Engine](screenshots/reasoning-engine.png)
+
+### The Analog Engine
+![Analog Engine](screenshots/analog-engine.png)
+
+### Market Structure
+![Market Structure](screenshots/market-structure.png)
+
+---
+
+##  How It Works
+
+1. **Ingestion:** Fetches the latest 10-K from SEC EDGAR.
+2. **Parallel Analysis:** 5 Level-1 engines analyze the text concurrently.
+3. **Synthesis:** Level-2 engines (Analog & Recommendation) synthesize the L1 outputs.
+4. **Delivery:** The Composer Engine aggregates the JSON results into a unified frontend report.
+
+---
+
+##  Architecture Diagram
+
+```text
+SEC 10-K Filing Data
+        │
+        ▼
+   Composer Engine (Orchestrator)
+        │
+        ├────────────┬────────────┬────────────┬────────────┐
+        ▼            ▼            ▼            ▼            ▼
+   Financial      Business      Market       Risk      Relationship
+   Engine         Engine        Engine       Engine    Engine
+        │            │            │            │            │
+        └────────────┴──────┬─────┴────────────┴────────────┘
+                            ▼
+        ┌───────────────────┴───────────────────┐
+        ▼                                       ▼
+  Analog Engine                        Recommendation Engine
 ```
 
-### Modular Responsibility Layers
+---
 
-| Layer | Responsibility |
-| :--- | :--- |
-| **Market Data Infrastructure** | Automated ingestion of Form 10-K/10-Q filings, normalization, and caching. |
-| **Structural Intelligence Engine** | Divergence detection, balance sheet stress indicators, and regime classification. |
-| **Historical Analog Engine** | Dynamic Time Warping (DTW) similarity matching on corporate operational trends. |
-| **Sentiment Intelligence** | finBERT analysis of Management Discussion & Analysis (MD&A) narrative shifts. |
-| **Explainable Reasoning** | groq-assisted LLM summarization, confidence estimation, and evidence mapping. |
-| **Security & Isolation** | Strict CORS matching, rate-limiting, and credentials isolation. |
+##  Why Multiple AI Engines?
+
+If you ask a single LLM to analyze financials, execution risk, and analogies all at once, it hallucinates and loses context. 
+
+We deployed **7 specialized AI engines**. Each has a single, highly-focused responsibility. They run in parallel via `asyncio.gather`, drastically reducing latency while eliminating context-bloat hallucinations.
 
 ---
 
-##  Features
+##  Tech Stack
 
-- **Live Streaming Analysis Workspace:** streams real-time parsing and analysis phases using **WebSockets** with an automatic **HTTP REST fallback** mechanism.
-- **Trie-Based Instant Search:** client-side auto-complete search bar powered by an in-memory **Trie data structure** indexing tickers and names.
-- **Side-by-Side Comparator:** allows analysts to evaluate structural metrics, risk profiles, and historical momentum between two companies simultaneously.
-- **Universal Command Palette (`Cmd + K`):** keyboard-friendly navigation hub to traverse pages, search entities, and toggle theme contexts instantly.
-- **Clean Premium Design:** a custom theme system built entirely on CSS design variables, featuring glassmorphism, responsive breakpoint hooks (`useWindowWidth`), and custom SVG visualizers.
+- **Frontend:** React, Vite, Framer Motion, Vanilla CSS.
+- **Backend:** Python, FastAPI, asyncio.
+- **AI Infrastructure:** Groq API (Ultra-low latency inference).
+- **Data Source:** SEC EDGAR (`sec-api`).
 
 ---
 
-##  Getting Started
+##  Project Structure
 
-### Prerequisites
-- Python 3.9 or higher
-- Node.js v18 or higher
-- npm or yarn
+```text
+/foretrace
+├── /frontend           # React/Vite App 
+│   ├── /src/pages      # Narrative-driven UI Views
+│   └── /src/components # Reusable UI Primitives
+└── /backend            # FastAPI App 
+    ├── /app/engines    # The 7 AI Reasoning Engines
+    └── /app/clients    # API Clients (Groq, SEC)
+```
 
-### 1. Clone the Repository
+---
+
+##  Local Development Setup
+
+### 1. Environment Variables
+Create `/backend/.env`:
 ```bash
-git clone https://github.com/Learner2006/foretrace.git
-cd foretrace
+GROQ_API_KEY="your_groq_key"
 ```
 
 ### 2. Backend Setup
-1. Navigate to the backend directory and set up a virtual environment:
-   ```bash
-   cd backend
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Configure environment variables in a `.env` file under `backend/`:
-   ```env
-   GROQ_API_KEY=your_groq_api_key_here
-   ```
-4. Start the FastAPI server:
-   ```bash
-   uvicorn main:app --reload
-   ```
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
 ### 3. Frontend Setup
-1. Navigate to the frontend directory:
-   ```bash
-   cd ../frontend
-   ```
-2. Install npm dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-4. Build the optimized production bundle:
-   ```bash
-   npm run build
-   ```
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-##  Security & Isolation
+##  Roadmap
 
-- **CORS Configuration:** strict origin matching on backend routes.
-- **Rate Limiting:** integrated slowapi limits on core analysis endpoints.
-- **Isolated Secrets:** no environment variables or API keys are committed or exposed client-side.
-- **Leftover Exclusions:** `.gitignore` blocks deployment configurations, build folders (`dist/`), and node modules.
+- [x] Multi-engine concurrent architecture
+- [x] Dynamic model routing and auto-fallback
+- [x] Narrative-driven frontend UI
+- [ ] Redis caching for parsed SEC filings
+- [ ] Earnings call transcript ingestion
+- [ ] Custom Analyst Personas (Value, Short Seller, etc.)
 
 ---
 
-##  Platform Constraints
+##  Current Limitations
 
-To maintain empirical integrity, ForeTrace will **never**:
-1. **Emit buy/sell recommendations:** we supply evidence and historical analogies; the interpretation is up to the analyst.
-2. **Present black-box conclusions:** every AI summary or classification must map to source SEC text/data.
-3. **Make absolute predictions:** we model trajectories and similarity indices rather than speculatively projecting numbers.
+- **Limited Company Universe:** The AI currently only analyzes a curated list of top-tier companies (S&P 500 equivalent) rather than the entire global stock market.
+- **Cold Start Latency:** Heavy head-to-head comparisons require triggering 10 concurrent AI models across two SEC filings. This can take 20-30 seconds on un-cached requests.
+- **Public Beta (No Auth):** ForeTrace is currently deployed as an open-access system without user accounts or persistent portfolio tracking.
+
+---
+
+## License
+© All Rights Reserved

@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./hooks/useTheme";
 import HomePage from "./pages/HomePage";
 import AnalysisPage from "./pages/AnalysisPage";
-import CompanyPage from "./pages/CompanyPage";
+import CompaniesPage from "./pages/CompaniesPage";
 import ComparePage from "./pages/ComparePage";
 import WatchlistPage from "./pages/WatchlistPage";
 import AboutPage from "./pages/AboutPage";
@@ -18,8 +18,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/AnalysisPage" element={<AnalysisPage />} />
-          <Route path="/company" element={<CompanyPage />} />
-          <Route path="/company/:ticker" element={<CompanyPage />} />
+          <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/ComparePage" element={<ComparePage />} />
           <Route path="/WatchlistPage" element={<WatchlistPage />} />
           <Route path="/AboutPage" element={<AboutPage />} />

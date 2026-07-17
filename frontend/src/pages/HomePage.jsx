@@ -284,7 +284,7 @@ export default function HomePage() {
             ))}
             <div style={{padding:"12px 20px",borderTop:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span className="ft-sans" style={{fontSize:11,color:t.textMuted}}>Showing 5 of 214 monitored companies</span>
-              <motion.button onClick={() => navigate("/company")} whileHover={{color:t.text}} transition={{duration:0.12}}
+              <motion.button onClick={() => navigate("/companies")} whileHover={{color:t.text}} transition={{duration:0.12}}
                 style={{background:"none",border:"none",fontSize:11,color:t.textSub,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:4}}>
                 View all companies<Icon path="M9 18l6-6-6-6" size={11} color="currentColor" />
               </motion.button>

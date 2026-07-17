@@ -29,6 +29,7 @@ export default function Footer({ t }) {
         <a href="https://www.linkedin.com/in/anushkaamittal/" target="_blank" rel="noopener noreferrer" style={linkStyle}>LinkedIn</a>
         <Link to="/privacy" style={linkStyle}>Privacy Policy</Link>
         <a href="mailto:anushkaa.mittal04@gmail.com" style={linkStyle}>Contact</a>
+   
       </div>
     </footer>
   );

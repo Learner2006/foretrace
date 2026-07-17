@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
 import { NAV_ITEMS } from "../../styles/tokens";
 import { CMD_ITEMS, TICKER_ITEMS } from "../../styles/data";
@@ -139,25 +139,28 @@ export default function Nav({t, dark, toggleTheme, onCmdOpen, vfn}) {
       <motion.nav variants={vfn(MV.nav)} initial="hidden" animate="visible"
         style={{borderBottom:`1px solid ${t.border}`, padding:`0 20px`, display:"flex", alignItems:"center", justifyContent:"space-between", height:60, background:t.navBg, backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", position:"sticky", top:0, zIndex:100}}>
 
-<motion.div onClick={() => navigate("/")} style={{display:"flex", alignItems:"center", gap:9, cursor:"pointer", flexShrink:0}}
-          whileHover={{opacity:0.75}} whileTap={{scale:0.96}} transition={{duration:0.15}}>
-          <div style={{width:26, height:26, borderRadius:7, background:t.text, display:"flex", alignItems:"center", justifyContent:"center"}}>
-            <Icon path={PULSE_PATH} size={12} color={t.bg} />
-          </div>
-          <span className="ft-sans" style={{fontSize:15, fontWeight:600, letterSpacing:"-0.3px", color:t.text}}>ForeTrace</span>
-        </motion.div>
+<Link to="/" style={{display:"flex", alignItems:"center", gap:9, textDecoration: "none", flexShrink:0}}>
+          <motion.div whileHover={{opacity:0.75, scale: 0.98}} whileTap={{scale:0.96}} transition={{duration:0.15}} style={{display:"flex", alignItems:"center", gap:9}}>
+            <div style={{width:26, height:26, borderRadius:7, background:t.text, display:"flex", alignItems:"center", justifyContent:"center"}}>
+              <Icon path={PULSE_PATH} size={12} color={t.bg} />
+            </div>
+            <span className="ft-sans" style={{fontSize:15, fontWeight:600, letterSpacing:"-0.3px", color:t.text}}>ForeTrace</span>
+          </motion.div>
+        </Link>
 
 <div className="hide-mobile" style={{display:"flex", alignItems:"center", gap:2}}>
           {NAV_ITEMS.map(item => {
             const isActive = location.pathname === item.path;
             return (
-              <motion.button key={item.label} onClick={() => navigate(item.path)}
-                whileHover={{backgroundColor:t.bgSubtle}} whileTap={{scale:0.97}} transition={{duration:0.12}}
-                style={{background:"none", border:"none", padding:"5px 12px", borderRadius:7, fontSize:13, fontWeight:isActive?600:500, color:isActive?t.text:t.textSub, cursor:"pointer", display:"flex", alignItems:"center", gap:5, fontFamily:"'DM Sans',sans-serif", position:"relative"}}>
-                {item.label}
-                {item.pro && <span style={{fontSize:8, fontWeight:700, background:t.text, color:t.bg, padding:"1px 5px", borderRadius:3, letterSpacing:"0.3px"}}>PRO</span>}
-                {isActive && <motion.div layoutId="nav-active" style={{position:"absolute", bottom:-1, left:8, right:8, height:1.5, background:t.text, borderRadius:1}} />}
-              </motion.button>
+              <Link key={item.label} to={item.path} style={{textDecoration: "none", display: "block"}}>
+                <motion.div
+                  whileHover={{backgroundColor:t.bgSubtle}} whileTap={{scale:0.97}} transition={{duration:0.12}}
+                  style={{background:"none", border:"none", padding:"5px 12px", borderRadius:7, fontSize:13, fontWeight:isActive?600:500, color:isActive?t.text:t.textSub, cursor:"pointer", display:"flex", alignItems:"center", gap:5, fontFamily:"'DM Sans',sans-serif", position:"relative"}}>
+                  {item.label}
+                  {item.pro && <span style={{fontSize:8, fontWeight:700, background:t.text, color:t.bg, padding:"1px 5px", borderRadius:3, letterSpacing:"0.3px"}}>PRO</span>}
+                  {isActive && <motion.div layoutId="nav-active" style={{position:"absolute", bottom:-1, left:8, right:8, height:1.5, background:t.text, borderRadius:1}} />}
+                </motion.div>
+              </Link>
             );
           })}
         </div>
@@ -183,11 +186,13 @@ export default function Nav({t, dark, toggleTheme, onCmdOpen, vfn}) {
             </AnimatePresence>
           </motion.button>
 
-<motion.button className="hide-mobile" onClick={() => navigate("/upgrade")}
+<Link to="/upgrade" className="hide-mobile" style={{textDecoration: "none"}}>
+          <motion.div
             whileHover={{opacity:0.8, scale:1.02}} whileTap={{scale:0.96}} transition={{duration:0.13}}
-            style={{background:t.text, color:t.bg, border:"none", borderRadius:7, padding:"7px 16px", fontSize:12, fontWeight:600, cursor:"pointer", letterSpacing:"-0.1px", fontFamily:"'DM Sans',sans-serif"}}>
+            style={{background:t.text, color:t.bg, borderRadius:7, padding:"7px 16px", fontSize:12, fontWeight:600, cursor:"pointer", letterSpacing:"-0.1px", fontFamily:"'DM Sans',sans-serif", display:"inline-block"}}>
             Upgrade
-          </motion.button>
+          </motion.div>
+        </Link>
 
 <motion.button className="show-mobile" onClick={() => setMobileMenuOpen(true)} whileTap={{scale:0.93}}
             style={{background:"none", border:`1px solid ${t.border}`, borderRadius:7, width:34, height:34, alignItems:"center", justifyContent:"center", cursor:"pointer", display:"flex"}}>
