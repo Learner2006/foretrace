@@ -184,27 +184,5 @@
   { "ticker": "PPG", "name": "PPG Industries Inc." },
   { "ticker": "APD", "name": "Air Products and Chemicals Inc." },
   { "ticker": "VMC", "name": "Vulcan Materials Company" },
-  { "ticker": "MLM", "name": "Martin Marietta Materials Inc." },
-
- 
-  { "ticker": "RELIANCE.NS", "name": "Reliance Industries" },
-  { "ticker": "TCS.NS", "name": "Tata Consultancy Services" },
-  { "ticker": "HDFCBANK.NS", "name": "HDFC Bank" },
-  { "ticker": "INFY.NS", "name": "Infosys" },
-  { "ticker": "ICICIBANK.NS", "name": "ICICI Bank" },
-  { "ticker": "HINDUNILVR.NS", "name": "Hindustan Unilever" },
-  { "ticker": "BHARTIARTL.NS", "name": "Bharti Airtel" },
-  { "ticker": "ITC.NS", "name": "ITC Limited" },
-  { "ticker": "KOTAKBANK.NS", "name": "Kotak Mahindra Bank" },
-  { "ticker": "LT.NS", "name": "Larsen & Toubro" },
-  { "ticker": "WIPRO.NS", "name": "Wipro" },
-  { "ticker": "AXISBANK.NS", "name": "Axis Bank" },
-  { "ticker": "MARUTI.NS", "name": "Maruti Suzuki" },
-  { "ticker": "TATAMOTORS.NS", "name": "Tata Motors" },
-  { "ticker": "SUNPHARMA.NS", "name": "Sun Pharmaceutical" },
-  { "ticker": "TATASTEEL.NS", "name": "Tata Steel" },
-  { "ticker": "ADANIENT.NS", "name": "Adani Enterprises" },
-  { "ticker": "BAJFINANCE.NS", "name": "Bajaj Finance" },
-  { "ticker": "HCLTECH.NS", "name": "HCL Technologies" },
-  { "ticker": "ONGC.NS", "name": "Oil & Natural Gas Corporation" }
+  { "ticker": "MLM", "name": "Martin Marietta Materials Inc." }
 ]

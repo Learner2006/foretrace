@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MV, v, EASE_OUT_EXPO } from "../styles/animations";
@@ -11,6 +11,14 @@ import { useTheme } from "../hooks/useTheme";
 import MarketPositionCard from "../components/company/MarketPositionCard";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const WS_BASE = API_BASE.replace(/^http/, "ws");
+
+const STEPS = [
+  "Reading SEC filing...",
+  "Identifying behavioral patterns...",
+  "Finding historical analogs...",
+  "Building analysis...",
+];
 
 const DEMO_DATA = {
   CSCO: {
@@ -111,7 +119,7 @@ function shapeCompareData(raw, ticker) {
     ticker: ticker?.toUpperCase() ?? "",
     company_name: raw.company ?? ticker,
     market_position: {
-      sector_standing: mp.sector_standing ?? "—",
+      sector_standing: mp.sector_standing ?? mp.sector ?? "—",
       momentum: mp.momentum ?? "stable",
       key_dependency: mp.key_dependency ?? null,
     },
@@ -126,7 +134,7 @@ function shapeCompareData(raw, ticker) {
     net,
     topAnalog,
     analogCount: analogs.length,
-    behavioral_summary: [bs.what_is_happening, bs.why_it_matters].filter(Boolean).join(" "),
+    behavioral_summary: [bs.what_is_happening ?? bs.observation, bs.why_it_matters].filter(Boolean).join(" "),
   };
 }
 
@@ -134,7 +142,7 @@ const ARROW_RIGHT = "M5 12h14M12 5l7 7-7 7";
 const VS_ACCENT_A = "#4C6FDB";
 const VS_ACCENT_B = "#C2703D";
 
-function CompareSearchColumn({ label, accent, onSearch, loading, error, data, t }) {
+function CompareSearchColumn({ label, accent, onSearch, loading, error, data, stepText, t }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -145,7 +153,9 @@ function CompareSearchColumn({ label, accent, onSearch, loading, error, data, t 
       </div>
       <SearchBar t={t} onSearch={onSearch} loading={loading} />
       {loading && (
-        <span className="ft-sans" style={{ fontSize: 11, color: t.textMuted, fontStyle: "italic" }}>Reading filings…</span>
+        <span className="ft-sans" style={{ fontSize: 11, color: t.textMuted, fontStyle: "italic" }}>
+          {stepText || "Reading filings…"}
+        </span>
       )}
       {error && (
         <span className="ft-sans" style={{ fontSize: 11, color: "#C0453C" }}>{error}</span>
@@ -384,49 +394,258 @@ function BehavioralSummaryCard({ dataA, dataB, nameA, nameB, t, isMobile }) {
 export default function ComparePage() {
   const navigate = useNavigate();
   const { isMobile } = useBreakpoint();
-
   const { t } = useTheme();
 
+  const [selectedA, setSelectedA] = useState(null);
+  const [selectedB, setSelectedB] = useState(null);
+  
   const [dataA, setDataA] = useState(null);
   const [dataB, setDataB] = useState(null);
   const [loadingA, setLoadingA] = useState(false);
   const [loadingB, setLoadingB] = useState(false);
+  const [stepA, setStepA] = useState(0);
+  const [stepB, setStepB] = useState(0);
   const [errorA, setErrorA] = useState(null);
   const [errorB, setErrorB] = useState(null);
 
-  // If you're about to copy-paste this, stop and make a reusable hook instead.
+  const [isDemo, setIsDemo] = useState(false);
+  const [demoTimestamp, setDemoTimestamp] = useState(null);
+
+  const runWebSocketCompare = useCallback((tickerA, nameA, tickerB, nameB) => {
+    setLoadingA(true);
+    setLoadingB(true);
+    setErrorA(null);
+    setErrorB(null);
+    setStepA(0);
+    setStepB(0);
+    setDataA(null);
+    setDataB(null);
+    setIsDemo(false);
+
+    // Enforce environment disable check
+    const disableDemo = import.meta.env.VITE_DISABLE_DEMO_DATA === "true";
+    if (!disableDemo) {
+      const demoA = DEMO_DATA[tickerA.toUpperCase()];
+      const demoB = DEMO_DATA[tickerB.toUpperCase()];
+      if (demoA && demoB) {
+        console.log(`Serving demo data comparison for ${tickerA} vs ${tickerB}`);
+        setDataA(shapeCompareData(demoA, tickerA));
+        setDataB(shapeCompareData(demoB, tickerB));
+        setLoadingA(false);
+        setLoadingB(false);
+        setIsDemo(true);
+        setDemoTimestamp("2026-07-15T12:00:00Z");
+        return;
+      }
+    }
+
+    let wsConnected = false;
+    let fallbackTriggered = false;
+
+    // Fallback to HTTP compare
+    const triggerHttpFallback = async () => {
+      if (fallbackTriggered) return;
+      fallbackTriggered = true;
+      console.log("WebSocket compare failed. Falling back to REST API.");
+
+      try {
+        const token = import.meta.env.VITE_API_TOKEN ?? "demo_token";
+        const res = await fetch(`${API_BASE}/compare?token=${token}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-API-Key": token },
+          body: JSON.stringify({
+            ticker_a: tickerA,
+            company_a: nameA,
+            ticker_b: tickerB,
+            company_b: nameB
+          })
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.detail || "Server comparison failed");
+        }
+        const raw = await res.json();
+        setDataA(shapeCompareData(raw.company_a_detail, tickerA));
+        setDataB(shapeCompareData(raw.company_b_detail, tickerB));
+      } catch (err) {
+        setErrorA(err.message || "Comparison failed");
+        setErrorB(err.message || "Comparison failed");
+      } finally {
+        setLoadingA(false);
+        setLoadingB(false);
+      }
+    };
+
+    try {
+      const token = import.meta.env.VITE_API_TOKEN ?? "demo_token";
+      const wsUrl = `${WS_BASE}/ws/compare/${tickerA.toUpperCase()}/${tickerB.toUpperCase()}?token=${token}`;
+      const ws = new WebSocket(wsUrl);
+
+      const connTimeout = setTimeout(() => {
+        if (!wsConnected) {
+          ws.close();
+          triggerHttpFallback();
+        }
+      }, 2000);
+
+      ws.onopen = () => {
+        wsConnected = true;
+        clearTimeout(connTimeout);
+        ws.send(JSON.stringify({
+          company_a: nameA,
+          company_b: nameB
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "step") {
+            if (msg.side === "a") {
+              setStepA(msg.step);
+            } else if (msg.side === "b") {
+              setStepB(msg.step);
+            }
+          } else if (msg.type === "result") {
+            const raw = msg.data;
+            setDataA(shapeCompareData(raw.company_a_detail, tickerA));
+            setDataB(shapeCompareData(raw.company_b_detail, tickerB));
+            setLoadingA(false);
+            setLoadingB(false);
+            ws.close();
+          } else if (msg.type === "error") {
+            setErrorA(msg.message);
+            setErrorB(msg.message);
+            setLoadingA(false);
+            setLoadingB(false);
+            ws.close();
+          }
+        } catch (e) {
+          console.error("Error parsing WebSocket message:", e);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket compare error:", err);
+        clearTimeout(connTimeout);
+        triggerHttpFallback();
+      };
+    } catch (e) {
+      console.error("WebSocket compare init failed:", e);
+      triggerHttpFallback();
+    }
+  }, []);
+
   const fetchSide = useCallback(async (ticker, name, side) => {
     const setData = side === "A" ? setDataA : setDataB;
     const setLoading = side === "A" ? setLoadingA : setLoadingB;
     const setError = side === "A" ? setErrorA : setErrorB;
+    const setStep = side === "A" ? setStepA : setStepB;
 
     setLoading(true);
     setError(null);
+    setStep(0);
+
+    const otherSide = side === "A" ? selectedB : selectedA;
+    if (side === "A") {
+      setSelectedA({ ticker, company_name: name || ticker });
+    } else {
+      setSelectedB({ ticker, company_name: name || ticker });
+    }
+
+    if (otherSide) {
+      const tickerA = side === "A" ? ticker : otherSide.ticker;
+      const nameA = side === "A" ? name : otherSide.company_name;
+      const tickerB = side === "A" ? otherSide.ticker : ticker;
+      const nameB = side === "A" ? otherSide.company_name : name;
+      runWebSocketCompare(tickerA, nameA, tickerB, nameB);
+      return;
+    }
+
+    // Single side fetch (WS Analyze)
     try {
-      const demo = DEMO_DATA[ticker?.toUpperCase()];
-      if (demo) {
-        setData(shapeCompareData(demo, ticker));
-        setLoading(false);
-        return;
+      const disableDemo = import.meta.env.VITE_DISABLE_DEMO_DATA === "true";
+      if (!disableDemo) {
+        const demo = DEMO_DATA[ticker?.toUpperCase()];
+        if (demo) {
+          setData(shapeCompareData(demo, ticker));
+          setLoading(false);
+          return;
+        }
       }
 
-      const res = await fetch(`${API_BASE}/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company_name: name, ticker }),
-      });
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      const raw = await res.json();
-      setData(shapeCompareData(raw, ticker));
+      let wsConnected = false;
+      let fallbackTriggered = false;
+
+      const triggerHttpFallback = async () => {
+        if (fallbackTriggered) return;
+        fallbackTriggered = true;
+        try {
+          const token = import.meta.env.VITE_API_TOKEN ?? "demo_token";
+          const res = await fetch(`${API_BASE}/analyze?token=${token}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-API-Key": token },
+            body: JSON.stringify({ company_name: name, ticker }),
+          });
+          if (!res.ok) throw new Error(`Server error ${res.status}`);
+          const raw = await res.json();
+          setData(shapeCompareData(raw, ticker));
+        } catch (e) {
+          setError(e.message ?? "Analysis failed");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const token = import.meta.env.VITE_API_TOKEN ?? "demo_token";
+      const wsUrl = `${WS_BASE}/ws/analyze/${ticker.toUpperCase()}?token=${token}`;
+      const ws = new WebSocket(wsUrl);
+
+      const connTimeout = setTimeout(() => {
+        if (!wsConnected) {
+          ws.close();
+          triggerHttpFallback();
+        }
+      }, 2000);
+
+      ws.onopen = () => {
+        wsConnected = true;
+        clearTimeout(connTimeout);
+        ws.send(JSON.stringify({ company_name: name, ticker }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "step") {
+            setStep(msg.step);
+          } else if (msg.type === "result") {
+            setData(shapeCompareData(msg.data, ticker));
+            setLoading(false);
+            ws.close();
+          } else if (msg.type === "error") {
+            setError(msg.message);
+            setLoading(false);
+            ws.close();
+          }
+        } catch (e) {
+          console.error("Error parsing WS message:", e);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error("WS error:", err);
+        clearTimeout(connTimeout);
+        triggerHttpFallback();
+      };
     } catch (e) {
       setError(e.message ?? "Analysis failed");
-    } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedA, selectedB, runWebSocketCompare]);
 
-  const nameA = dataA?.company_name ?? "Company A";
-  const nameB = dataB?.company_name ?? "Company B";
+  const nameA = dataA?.company_name ?? selectedA?.company_name ?? "Company A";
+  const nameB = dataB?.company_name ?? selectedB?.company_name ?? "Company B";
   const bothReady = !!(dataA && dataB);
   const maxW = { maxWidth: 980, margin: "0 auto", padding: `0 ${isMobile ? 20 : 32}px` };
 
@@ -445,7 +664,7 @@ export default function ComparePage() {
 
       <div style={{ position: "relative", zIndex: 1 }}>
 
-<div style={{ ...maxW, padding: isMobile ? "40px 20px 32px" : "56px 32px 40px" }}>
+        <div style={{ ...maxW, padding: isMobile ? "40px 20px 32px" : "56px 32px 40px" }}>
           <motion.div variants={v(MV.heroCh)} initial="hidden" animate="visible">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", margin: 0 }}>
@@ -462,14 +681,32 @@ export default function ComparePage() {
           </motion.div>
         </div>
 
-<div style={{ ...maxW, marginBottom: isMobile ? 36 : 48 }}>
+        <div style={{ ...maxW, marginBottom: isMobile ? 36 : 48 }}>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 20 : 24 }}>
-            <CompareSearchColumn label="Company A" accent={VS_ACCENT_A} onSearch={(ticker, name) => fetchSide(ticker, name, "A")} loading={loadingA} error={errorA} data={dataA} t={t} />
-            <CompareSearchColumn label="Company B" accent={VS_ACCENT_B} onSearch={(ticker, name) => fetchSide(ticker, name, "B")} loading={loadingB} error={errorB} data={dataB} t={t} />
+            <CompareSearchColumn 
+              label="Company A" 
+              accent={VS_ACCENT_A} 
+              onSearch={(ticker, name) => fetchSide(ticker, name, "A")} 
+              loading={loadingA} 
+              error={errorA} 
+              data={dataA || selectedA} 
+              stepText={STEPS[stepA]} 
+              t={t} 
+            />
+            <CompareSearchColumn 
+              label="Company B" 
+              accent={VS_ACCENT_B} 
+              onSearch={(ticker, name) => fetchSide(ticker, name, "B")} 
+              loading={loadingB} 
+              error={errorB} 
+              data={dataB || selectedB} 
+              stepText={STEPS[stepB]} 
+              t={t} 
+            />
           </div>
         </div>
 
-{!dataA && !dataB && !loadingA && !loadingB && (
+        {!selectedA && !selectedB && !loadingA && !loadingB && (
           <div style={{ ...maxW, marginBottom: 100 }}>
             <div style={{ textAlign: "center", padding: isMobile ? "48px 20px" : "72px 40px", border: `1px dashed ${t.border}`, borderRadius: 14, background: t.bgSubtle }}>
               <p className="ft-serif" style={{ fontSize: 22, color: t.text, margin: "0 0 8px", fontWeight: 400 }}>
@@ -516,8 +753,28 @@ export default function ComparePage() {
 
         {bothReady && (
           <>
-
             <div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+              {isDemo && (
+                <div style={{
+                  background: "rgba(194, 112, 61, 0.08)",
+                  border: "1px solid rgba(194, 112, 61, 0.2)",
+                  borderRadius: 10,
+                  padding: "12px 18px",
+                  marginBottom: 24,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 8
+                }}>
+                  <span className="ft-sans" style={{ fontSize: 12, color: "#C2703D", fontWeight: 600 }}>
+                    ⚠️ DEMO DATA - Not live analysis
+                  </span>
+                  <span className="ft-sans" style={{ fontSize: 11, color: t.textMuted }}>
+                    Last updated: {new Date(demoTimestamp).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
               <SectionHeading eyebrow="Pillar · Market position" title="How each company sits in its ecosystem" t={t} isMobile={isMobile} />
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
                 <MarketPositionCard data={dataA.market_position} t={t} />
@@ -525,9 +782,7 @@ export default function ComparePage() {
               </div>
             </div>
 
-
-
-<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+            <div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
               <SectionHeading eyebrow="Head-to-head" title="Structural signals, dimension by dimension" t={t} isMobile={isMobile} />
               <motion.div variants={v(MV.fadeUp)} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
                 <PremiumCard t={t} style={{ background: t.bgCard }}>
@@ -555,21 +810,21 @@ export default function ComparePage() {
               </motion.div>
             </div>
 
-<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+            <div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
               <VerdictCard dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} t={t} isMobile={isMobile} />
             </div>
 
-<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+            <div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
               <SectionHeading eyebrow="Pillar · Historical analogs" title="What situations does each company resemble" t={t} isMobile={isMobile} />
               <AnalogSnapshotCard dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} t={t} isMobile={isMobile} />
             </div>
 
-<div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
+            <div style={{ ...maxW, marginBottom: isMobile ? 40 : 56 }}>
               <SectionHeading eyebrow="Explainability" title="Why the model reads it this way" t={t} isMobile={isMobile} />
               <BehavioralSummaryCard dataA={dataA} dataB={dataB} nameA={nameA} nameB={nameB} t={t} isMobile={isMobile} />
             </div>
 
-<div style={{ ...maxW, marginBottom: 100 }}>
+            <div style={{ ...maxW, marginBottom: 100 }}>
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
                 {[{ name: nameA, ticker: dataA.ticker, accent: VS_ACCENT_A }, { name: nameB, ticker: dataB.ticker, accent: VS_ACCENT_B }].map(({ name, ticker, accent }) => (
                   <motion.button

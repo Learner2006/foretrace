@@ -1,8 +1,22 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from typing import List, Optional, Any
 from enum import Enum
 import re
 import hashlib
+import html
+
+def sanitize_string(v: str) -> str:
+    if not v:
+        return v
+    # Reject null bytes and control characters
+    if "\x00" in v or any(ord(c) < 32 for c in v if c not in "\r\n\t"):
+        raise ValueError("Input contains null bytes or invalid control characters")
+    # Strip HTML tags
+    v = re.sub(r'<[^>]*>', '', v)
+    # Escape special characters
+    v = html.escape(v)
+    return v.strip()
+
 
 # block verbatim prompt copies (hallucination detection)
 PLACEHOLDERS = [
@@ -133,6 +147,46 @@ class RelativeRank(str, Enum):
 class AnalyzeRequest(ForeTraceBaseModel):
     company_name: str
     ticker: Optional[str] = None
+
+    @field_validator('ticker')
+    def validate_ticker(cls, v):
+        if v is not None:
+            v = v.upper().strip()
+            if not re.match(r"^[A-Z]{1,5}$", v):
+                raise ValueError("Ticker must be 1-5 uppercase letters")
+        return v
+
+    @field_validator('company_name')
+    def validate_company_name(cls, v):
+        if not v:
+            raise ValueError("Company name cannot be empty")
+        v = sanitize_string(v)
+        if len(v) > 200:
+            raise ValueError("Company name must be under 200 characters")
+        return v
+
+class CompareRequest(ForeTraceBaseModel):
+    ticker_a: str
+    company_a: Optional[str] = None
+    ticker_b: str
+    company_b: Optional[str] = None
+
+    @field_validator('ticker_a', 'ticker_b')
+    def validate_tickers(cls, v):
+        if v is not None:
+            v = v.upper().strip()
+            if not re.match(r"^[A-Z]{1,5}$", v):
+                raise ValueError("Ticker must be 1-5 uppercase letters")
+        return v
+
+    @field_validator('company_a', 'company_b')
+    def validate_companies(cls, v):
+        if v is not None:
+            v = sanitize_string(v)
+            if len(v) > 200:
+                raise ValueError("Company name must be under 200 characters")
+        return v
+
 
 class Signals(ForeTraceBaseModel):
     revenue_trend: str

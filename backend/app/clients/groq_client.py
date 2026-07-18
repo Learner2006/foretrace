@@ -5,6 +5,10 @@ from typing import Dict, Any, List, Optional
 import asyncio
 import json
 import re
+from app.utils.circuit_breaker import CircuitBreaker
+
+groq_circuit = CircuitBreaker("Groq API")
+
 
 class GroqClient:
     def __init__(self):
@@ -20,9 +24,9 @@ class GroqClient:
             "mixtral-8x7b-32768"
         ]
         self.fallback_reasoning_models = [
-            "deepseek-r1-distill-llama-70b",
             "llama-3.3-70b-versatile",
-            "llama-3.1-70b-versatile"
+            "llama-3.1-70b-versatile",
+            "deepseek-r1-distill-llama-70b"
         ]
         self._cached_models = []
 
@@ -53,11 +57,15 @@ class GroqClient:
         # If API returns models, dynamically build the best list
         if available:
             if tier == "reasoning":
-                # Prefer deepseek-r1, then the largest llama models
+                # Primary: Llama 3.3 70B
+                llama3_3 = [m for m in available if "llama" in m.lower() and "3.3" in m.lower() and "70b" in m.lower()]
+                # Fallback 1: Llama 3.1 70B
+                llama3_1 = [m for m in available if "llama" in m.lower() and "3.1" in m.lower() and "70b" in m.lower()]
+                # Fallback 2: DeepSeek R1
                 deepseeks = [m for m in available if "deepseek-r1" in m.lower()]
-                llamas_70b = [m for m in available if "llama" in m.lower() and "70b" in m.lower() and "versatile" in m.lower()]
-                llamas = [m for m in available if "llama" in m.lower()]
-                return deepseeks + llamas_70b + llamas
+                
+                others = [m for m in available if m not in llama3_3 and m not in llama3_1 and m not in deepseeks]
+                return llama3_3 + llama3_1 + deepseeks + others
             else: # fast
                 # Prefer versatile/instant llama models
                 llamas = [m for m in available if "llama" in m.lower() and ("8b" in m.lower() or "instant" in m.lower())]
@@ -67,6 +75,7 @@ class GroqClient:
         # If dynamic fetch failed, use hardcoded lists
         return self.fallback_reasoning_models if tier == "reasoning" else self.fallback_fast_models
 
+    @groq_circuit
     async def chat_completion_json(self, prompt: str, system_message: str = "Return only valid JSON.", model: str = None, tier: str = "fast", temperature: float = 0.3) -> Dict[str, Any]:
         """
         Executes a chat completion enforcing JSON mode.

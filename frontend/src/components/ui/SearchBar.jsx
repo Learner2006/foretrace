@@ -383,7 +383,7 @@ useEffect(() => {
               ) : query.length > 1 ? (
                 <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 8 }}>
                   <span className="ft-sans" style={{ fontSize: 12, color: t.textMuted, fontStyle: "italic" }}>
-                    No match — try ticker directly, e.g. AAPL or RELIANCE.NS
+                    No match — try ticker directly, e.g. AAPL or MSFT
                   </span>
                 </div>
               ) : null}

@@ -834,9 +834,10 @@ export default function AnalysisPage() {
       }, 3500);
 
       try {
-        const res = await fetch(`${API_BASE}/analyze`, {
+        const token = import.meta.env.VITE_API_TOKEN ?? "demo_token";
+        const res = await fetch(`${API_BASE}/analyze?token=${token}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-API-Key": token },
           body: JSON.stringify({ company_name: companyName, ticker }),
         });
         if (!res.ok) {
@@ -854,7 +855,8 @@ export default function AnalysisPage() {
 
     try {
       // try ws first for live pipeline progress
-      const wsUrl = `${WS_BASE}/ws/analyze/${ticker.toUpperCase()}`;
+      const token = import.meta.env.VITE_API_TOKEN ?? "demo_token";
+      const wsUrl = `${WS_BASE}/ws/analyze/${ticker.toUpperCase()}?token=${token}`;
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 

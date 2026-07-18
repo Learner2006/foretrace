@@ -128,7 +128,6 @@ const TICKER_MAP = {
   "Tesla": "TSLA",
   "Berkshire": "BRK.B",
   "TSMC": "TSM",
-  "Reliance": "RELIANCE.NS",
   "Spotify": "SPOT",
   "Adobe": "ADBE",
   "Salesforce": "CRM",
