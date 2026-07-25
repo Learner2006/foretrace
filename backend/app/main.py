@@ -5,13 +5,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api.routes.analysis import router
+from app.api.routes import analysis
 from app.api.routes.company import router as company_router
 from app.config.settings import settings
 from app.utils.logger import logger
 from app.utils.limiter import limiter
 
-app = FastAPI(title="ForeTrace API")
+import sentry_sdk
+
+app = FastAPI(title="ForeTrace API", version="1.0.0")
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        traces_sample_rate=0.1 if settings.env == "prod" else 1.0,
+        environment=settings.env,
+    )
+    logger.info("Sentry error tracking initialized successfully")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -37,6 +47,9 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-API-Key"],
     allow_credentials=True,
 )
+
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ── Payload Size Limit Middleware ────────────────────────────────────────────
@@ -69,16 +82,15 @@ async def authenticate_requests(request: Request, call_next):
         
     if settings.api_key:
         api_key_header = request.headers.get("X-API-Key")
-        api_key_query = request.query_params.get("token")
         
-        if api_key_header != settings.api_key and api_key_query != settings.api_key:
+        if api_key_header != settings.api_key:
             logger.warning(
                 f"Unauthorized request to {path} from client {request.client.host if request.client else 'unknown'}",
                 extra={"metadata": {"event": "auth_failure", "path": path, "ip": request.client.host if request.client else "unknown"}}
             )
             return JSONResponse(
                 status_code=401,
-                content={"detail": "Unauthorized. Invalid or missing X-API-Key header or token."}
+                content={"detail": "Unauthorized. Invalid or missing X-API-Key header."}
             )
         
         logger.info(
@@ -99,6 +111,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         exc_info=True,
         extra={"metadata": {"event": "unhandled_exception", "correlation_id": correlation_id}}
     )
+    import sentry_sdk
+    sentry_sdk.capture_exception(exc)
+    
     return JSONResponse(
         status_code=500,
         content={
@@ -110,8 +125,28 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
-app.include_router(router)
-app.include_router(company_router)
+app.include_router(analysis.router, tags=["analysis"])
+app.include_router(company_router, tags=["company"])
+
+# ── Instrument Prometheus ─────────────────────────────────────────────────────
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
+
+@app.get("/live")
+async def liveness():
+    """Liveness check endpoint."""
+    return {"status": "alive"}
+
+
+@app.get("/ready")
+async def readiness():
+    """Readiness check endpoint."""
+    from app.clients.groq_client import groq_circuit
+    from app.clients.sec_client import sec_circuit
+    if groq_circuit.state.name == "OPEN" or sec_circuit.state.name == "OPEN":
+        return JSONResponse(status_code=503, content={"status": "degraded", "detail": "Circuit breakers open"})
+    return {"status": "ready"}
 
 
 @app.get("/health")

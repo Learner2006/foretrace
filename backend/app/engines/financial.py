@@ -4,72 +4,55 @@ from app.schemas.analysis import Signals, StructuralSignal
 from pydantic import BaseModel
 import json
 import re
+from app.schemas.extraction import CorporateKnowledgeGraph
 
 class FinancialEngineOutput(BaseModel):
     signals: Signals
     structural_signals: List[StructuralSignal]
 
 class FinancialEngine:
-    async def run(self, company_name: str, filing_text: str) -> FinancialEngineOutput:
-        prompt = f"""You are the Financial Engine of the ForeTrace AI. You are a hyper-critical, deeply skeptical forensic analyst. You are exclusively analyzing top 200 / S&P 500 companies. 
-Do NOT praise the company for having high revenue or cash—that is the bare minimum for this tier. Your job is to find the "rot inside": structural vulnerabilities, declining unit economics, unsustainable capital allocation, margin compression masked by accounting, and hidden leverage.
-
-Company: {company_name}
-
-Filing Text:
-{filing_text}
-
-INSTRUCTIONS:
-1. Assess the revenue trend, debt posture, expansion signals, margin pressure, layoffs/restructuring, and cash position with extreme skepticism.
-2. Generate 1-2 financial structural signals (e.g., fundamental shifts in unit economics, capital allocation, or margin structure). Focus on the NEGATIVE trade-offs or hidden costs of their current strategy.
-3. Every evidence MUST be a direct quote from the text.
-4. Output strict JSON matching the schema below.
-
-
-JSON Format:
-{{
-  "signals": {{
-    "revenue_trend": "declining" | "growing" | "stable" | "uncertain",
-    "debt_posture": "increasing" | "decreasing" | "stable",
-    "expansion_signals": ["keyword1", "keyword2"],
-    "margin_pressure": true | false,
-    "layoffs_or_restructuring": true | false,
-    "cash_position": "strong" | "weak" | "unknown"
-  }},
-  "structural_signals": [
-    {{
-      "observation": "Specific metric or trend shift (e.g. accelerating Capex/Revenue ratio)",
-      "trend": "rising" | "stable" | "declining",
-      "evidence": "Direct quote or specific citation from the 10-K.",
-      "why_it_matters": "Specific business impact and strategic tension.",
-      "future_implication": "Long-term effect on business model.",
-      "possible_invalidation": "What specific data point/event would prove this signal wrong.",
-      "confidence": "High" | "Moderate" | "Low",
-      "source": "Item 7 (MD&A) or Item 1"
-    }}
-  ]
-}}
-"""
-        response = await groq_client.chat_completion_json(
-            prompt=prompt,
-            system_message="You are a financial analysis engine. Return only valid JSON.",
-            tier="fast"
+    async def run_deterministic(self, company_name: str, extraction_data: CorporateKnowledgeGraph) -> FinancialEngineOutput:
+        """
+        Pure Python mapping of Structural Pillars to legacy Financial Signals.
+        """
+        # Safely extract metrics from the Business Model and Capital Allocation pillars
+        bm = extraction_data.business_model.metrics
+        ca = extraction_data.capital_allocation.metrics
+        op = extraction_data.operational_discipline.metrics
+        
+        # Derive generic legacy fields from the complex EvidenceObjects
+        def _get_val(metrics_dict, key, default):
+            return metrics_dict[key].value if key in metrics_dict else default
+            
+        signals = Signals(
+            revenue_trend=_get_val(bm, "revenue_trend", "stable"),
+            debt_posture=_get_val(ca, "debt_posture", "stable"),
+            expansion_signals=extraction_data.business_model.key_drivers,
+            margin_pressure=bool("pressure" in str(_get_val(op, "margin", "")).lower()),
+            layoffs_or_restructuring=bool("layoff" in str(_get_val(op, "restructuring", "")).lower() or "restructur" in str(_get_val(op, "restructuring", "")).lower()),
+            cash_position=_get_val(ca, "cash_position", "unknown"),
+            capex_trend=_get_val(ca, "capex_trend", "stable")
         )
-        try:
-            return FinancialEngineOutput(**response)
-        except Exception as e:
-            from app.utils.logger import logger
-            logger.warning(f"Validation failed for FinancialEngineOutput: {e}. Retrying...")
-            retry_prompt = prompt + f"\n\nYour previous response failed validation: {str(e)}. Fix this specific issue and return corrected JSON."
-            
-            # Extract the tier from the previous call if possible, default to reasoning
-            tier = "reasoning"
-            
-            retry_response = await groq_client.chat_completion_json(
-                prompt=retry_prompt,
-                system_message="Return only valid JSON.",
-                tier=tier
+        
+        def _get_evidence(metrics_dict):
+            if not metrics_dict:
+                return "No specific evidence."
+            first_metric = metrics_dict[list(metrics_dict.keys())[0]]
+            return first_metric.evidence[0] if first_metric.evidence else "No specific evidence."
+
+        structural_signals = [
+            StructuralSignal(
+                observation=extraction_data.capital_allocation.description,
+                trend="stable",
+                evidence=_get_evidence(ca),
+                why_it_matters=extraction_data.capital_allocation.why_it_matters,
+                future_implication=extraction_data.capital_allocation.future_implication,
+                possible_invalidation=extraction_data.capital_allocation.possible_invalidation,
+                confidence="High",
+                source=ca[list(ca.keys())[0]].source_section if ca else "Item 7"
             )
-            return FinancialEngineOutput(**retry_response)
+        ]
+        
+        return FinancialEngineOutput(signals=signals, structural_signals=structural_signals)
 
 financial_engine = FinancialEngine()

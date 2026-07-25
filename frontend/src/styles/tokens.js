@@ -26,7 +26,6 @@ export const DARK = {
 
 export const NAV_ITEMS = [
   { label:"Analyze",   path:"/AnalysisPage", pro:false },
-  { label:"Compare",   path:"/ComparePage",  pro:true  },
   { label:"Watchlist", path:"/WatchlistPage",pro:false },
   { label:"Companies", path:"/companies" ,pro:false },
   { label:"About",     path:"/AboutPage",    pro:false },

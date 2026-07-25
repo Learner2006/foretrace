@@ -28,7 +28,6 @@ const WS_BASE = API_BASE.replace(/^http/, "ws");
 const ERROR_MAP = [
   [["SEC EDGAR pe nahi mili","not found"],   "Company not found on SEC EDGAR",      "Try the ticker directly — e.g. AAPL instead of Apple Inc."],
   [["10-K filing nahi mili"],                "10-K filing unavailable",             "This company may not be publicly listed or its filing is not available."],
-  [["Indian company"],                       "Indian company data unavailable",      "Try with .NS or .BO suffix — e.g. RELIANCE.NS"],
   [["timeout","network"],                    "SEC servers are slow",                 "Retry in 30 seconds."],
 ];
 const getError = (msg) => {
@@ -825,7 +824,6 @@ export default function AnalysisPage() {
     const triggerHttpFallback = async () => {
       if (fallbackTriggered) return;
       fallbackTriggered = true;
-      console.log("WebSocket failed or timed out. Falling back to REST API.");
 
       let s = 0;
       timer.current = setInterval(() => {

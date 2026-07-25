@@ -7,8 +7,6 @@ from app.engines.business import business_engine
 from app.engines.risk import risk_engine
 from app.engines.relationship import relationship_engine
 from app.engines.market import market_engine
-from app.engines.analog import analog_engine
-from app.engines.recommendation import recommendation_engine
 
 class ComposerEngine:
     @staticmethod
@@ -80,49 +78,55 @@ class ComposerEngine:
         if on_step_cb:
             await on_step_cb(1)
             
-        logger.info(f"Running parallel engines for {company_name}")
+        logger.info(f"Running Unified Extraction Engine for {company_name}")
+        from app.engines.extraction import extraction_engine
+        from app.engines.strategic_synthesis import strategic_synthesis_engine
         
-        # run L1 concurrently so one slow model doesn't block the rest
-        results = await asyncio.gather(
-            financial_engine.run(company_name, filing_text),
-            business_engine.run(company_name, filing_text),
-            risk_engine.run(company_name, filing_text),
-            relationship_engine.run(company_name, filing_text),
-            market_engine.run(company_name, filing_text),
-            return_exceptions=True
-        )
+        try:
+            extraction_data = await extraction_engine.execute(company_name, filing_text, ticker)
+        except Exception as e:
+            logger.error(f"Extraction failed for {company_name}: {e}")
+            return {
+                "company": company_name,
+                "behavioral_summary": {},
+                "behavioral_pattern_identified": "Extraction Failed",
+                "risk_signals": [],
+                "analogs": [],
+                "mitigation_levers": [],
+                "relationship_context": {},
+                "chart_data": [],
+                "structural_risk": {"zone": "Unknown", "score": 0, "reason": "Data unavailable", "active_factors": []},
+                "signals": {},
+                "market_position": {},
+                "structural_signals": [],
+                "match_count": 0
+            }
         
         if on_step_cb:
             await on_step_cb(2)
         
-        financial_out = results[0].model_dump() if not isinstance(results[0], Exception) else {"signals": {}, "structural_signals": []}
-        business_out = results[1].model_dump() if not isinstance(results[1], Exception) else {"behavioral_summary": {}, "behavioral_pattern_identified": "", "structural_signals": []}
-        risk_out = results[2].model_dump() if not isinstance(results[2], Exception) else {"risk_signals": []}
-        relationship_out = results[3].model_dump() if not isinstance(results[3], Exception) else {"relationship_context": {}}
-        market_out = results[4].model_dump() if not isinstance(results[4], Exception) else {"market_position": None}
-        
-        if isinstance(results[0], Exception): logger.error(f"Financial engine failed: {results[0]}")
-        if isinstance(results[1], Exception): logger.error(f"Business engine failed: {results[1]}")
-        if isinstance(results[2], Exception): logger.error(f"Risk engine failed: {results[2]}")
-        if isinstance(results[3], Exception): logger.error(f"Relationship engine failed: {results[3]}")
-        if isinstance(results[4], Exception): logger.error(f"Market engine failed: {results[4]}")
+        logger.info(f"Running Deterministic Engines for {company_name}")
+        financial_out = (await financial_engine.run_deterministic(company_name, extraction_data)).model_dump()
+        business_out = (await business_engine.run_deterministic(company_name, extraction_data)).model_dump()
+        risk_out = (await risk_engine.run_deterministic(company_name, extraction_data)).model_dump()
+        relationship_out = (await relationship_engine.run_deterministic(company_name, extraction_data)).model_dump()
+        market_out = (await market_engine.run_deterministic(company_name, extraction_data)).model_dump()
 
         # Combine structural signals
         all_structural_signals = financial_out.get("structural_signals", []) + business_out.get("structural_signals", [])
         
-        logger.info(f"Running Level 2 engines for {company_name}")
-        
-        l2_results = await asyncio.gather(
-            analog_engine.run(company_name, business_out.get("behavioral_summary", {}), all_structural_signals),
-            recommendation_engine.run(company_name, business_out.get("behavioral_summary", {}), [], risk_out.get("risk_signals", [])),
-            return_exceptions=True
-        )
-        
-        analog_out = l2_results[0].model_dump() if not isinstance(l2_results[0], Exception) else {"analogs": []}
-        rec_out = l2_results[1].model_dump() if not isinstance(l2_results[1], Exception) else {"mitigation_levers": []}
-        
-        if isinstance(l2_results[0], Exception): logger.error(f"Analog engine failed: {l2_results[0]}")
-        if isinstance(l2_results[1], Exception): logger.error(f"Recommendation engine failed: {l2_results[1]}")
+        logger.info(f"Running Level 2 Strategic Synthesis for {company_name}")
+        try:
+            deterministic_outputs = {
+                "risk_score": self._compute_zscore_proxy(financial_out.get("signals", {})).get("score", 50)
+            }
+            synthesis_out = (await strategic_synthesis_engine.execute(company_name, extraction_data.model_dump(), deterministic_outputs)).model_dump()
+            analog_out = {"analogs": synthesis_out.get("analogs", [])}
+            rec_out = {"mitigation_levers": synthesis_out.get("mitigation_levers", [])}
+        except Exception as e:
+            logger.error(f"Strategic Synthesis failed: {e}")
+            analog_out = {"analogs": []}
+            rec_out = {"mitigation_levers": []}
         
         if on_step_cb:
             await on_step_cb(3)

@@ -212,7 +212,7 @@ useEffect(() => {
               if (suggestions.length > 0) setShowDrop(true);
             }}
             onBlur={() => setFocused(false)}
-            placeholder="Search company or ticker — e.g. Apple, AAPL, Reliance"
+            placeholder="Search company or ticker — e.g. Apple, AAPL, Netflix"
             disabled={loading}
             autoComplete="off"
             spellCheck={false}

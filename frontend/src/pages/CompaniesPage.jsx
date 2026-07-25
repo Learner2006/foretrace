@@ -86,12 +86,6 @@ const COMPANY_PROFILES = {
     signals: ["Cloud database migration", "OCI hyper-growth"],
     moat: "strong", trajectory: "growing", confidence: 79, filing_period: "Q2 2025",
   },
-  INTC: {
-    sector: "Semiconductors",
-    shift: "Intel is burning capital to rebuild manufacturing competency it ceded to TSMC over a decade — the foundry bet requires $100B+ in capex with profitability gated to 18A node yield rates.",
-    signals: ["Foundry turnaround risk", "Market share erosion"],
-    moat: "weak", trajectory: "declining", confidence: 44, filing_period: "Q3 2024",
-  },
   ADBE: {
     sector: "Creative Software",
     shift: "Generative AI is both Adobe's biggest opportunity and its existential question — Firefly integration defends the platform, but usage-based pricing could disrupt its per-seat subscription model.",

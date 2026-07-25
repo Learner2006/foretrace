@@ -3,51 +3,29 @@ from app.schemas.analysis import RelationshipContext
 from pydantic import BaseModel
 import json
 import re
+from app.schemas.extraction import CorporateKnowledgeGraph
 
 class RelationshipEngineOutput(BaseModel):
     relationship_context: RelationshipContext
 
 class RelationshipEngine:
-    async def run(self, company_name: str, filing_text: str) -> RelationshipEngineOutput:
-        prompt = f"""You are the Relationship Engine of the ForeTrace AI. Your task is to extract ecosystem dependencies and relationship contexts from the SEC filing.
-
-Company: {company_name}
-
-Filing Text:
-{filing_text}
-
-INSTRUCTIONS:
-1. Explain relationships and dependencies, supplier dependence, customer concentration, partner ecosystem.
-2. Output strict JSON matching the schema below.
-
-JSON Format:
-{{
-  "relationship_context": {{
-    "linked_to": ["Key company/entity influencing trajectory"],
-    "insight": "One analytical sentence explaining the relationship dynamics, detailing why it limits pricing power or accelerates growth."
-  }}
-}}
-"""
-        response = await groq_client.chat_completion_json(
-            prompt=prompt,
-            system_message="You are a relationship analysis engine. Return only valid JSON.",
-            tier="fast"
-        )
-        try:
-            return RelationshipEngineOutput(**response)
-        except Exception as e:
-            from app.utils.logger import logger
-            logger.warning(f"Validation failed for RelationshipEngineOutput: {e}. Retrying...")
-            retry_prompt = prompt + f"\n\nYour previous response failed validation: {str(e)}. Fix this specific issue and return corrected JSON."
+    async def run_deterministic(self, company_name: str, extraction_data: CorporateKnowledgeGraph) -> RelationshipEngineOutput:
+        """
+        Pure Python mapping of Structural Pillars to legacy Relationship Context.
+        """
+        linked_to = []
+        insight = "Mapped ecosystem relationships based on extraction."
+        
+        if extraction_data.ecosystem_relationships:
+            linked_to = [rel.value for rel in extraction_data.ecosystem_relationships]
+            rel_zero = extraction_data.ecosystem_relationships[0]
+            insight = rel_zero.evidence[0] if rel_zero.evidence else "No specific evidence provided."
             
-            # Extract the tier from the previous call if possible, default to reasoning
-            tier = "reasoning"
-            
-            retry_response = await groq_client.chat_completion_json(
-                prompt=retry_prompt,
-                system_message="Return only valid JSON.",
-                tier=tier
+        return RelationshipEngineOutput(
+            relationship_context=RelationshipContext(
+                linked_to=linked_to,
+                insight=insight
             )
-            return RelationshipEngineOutput(**retry_response)
+        )
 
 relationship_engine = RelationshipEngine()

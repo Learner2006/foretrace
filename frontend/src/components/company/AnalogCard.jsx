@@ -37,14 +37,14 @@ export default function AnalogCard({ t, analog, isMobile, vfn }) {
         onClick={() => hasLink && navigate(`/AnalysisPage?ticker=${analog.analog_ticker}&name=${analog.analog_ticker}`)}
       >
 
-<div style={{background:t.bgSubtle, borderBottom:`1px solid ${t.border}`, padding:"10px 20px 10px 24px", display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+<div style={{background:t.bgSubtle, borderBottom:`1px solid ${t.border}`, padding:isMobile?"12px 16px":"10px 20px 10px 24px", display:"flex", flexDirection:isMobile?"column":"row", alignItems:isMobile?"flex-start":"center", justifyContent:"space-between", gap:isMobile?12:0}}>
           <div style={{display:"flex", alignItems:"center", gap:10}}>
             <motion.div animate={{opacity:[1,0.45,1]}} transition={{duration:2.4, repeat:Infinity, ease:"easeInOut"}}>
               <Dot color="#5C9B6E" size={6} />
             </motion.div>
             <span className="ft-sans" style={{fontSize:11, color:t.textSub, fontWeight:500}}>Analog Engine · Structural match report</span>
           </div>
-          <div style={{display:"flex", alignItems:"center", gap:10}}>
+          <div style={{display:"flex", alignItems:"center", gap:10, flexWrap:isMobile?"wrap":"nowrap"}}>
             <span className="ft-sans" style={{background:ts.badge, color:ts.badgeText, border:`1px solid ${ts.badgeBorder}`, fontSize:9, fontWeight:700, letterSpacing:"0.12em", padding:"3px 8px", borderRadius:3, textTransform:"uppercase"}}>
               {ts.label}
             </span>
@@ -124,7 +124,7 @@ export default function AnalogCard({ t, analog, isMobile, vfn }) {
               {analog.citation && (
                 <span className="ft-sans" style={{fontSize:10, color:t.textMuted, fontStyle:"italic"}}>{analog.citation}</span>
               )}
-              <div style={{display:"flex", gap:12, alignItems:"center"}}>
+              <div style={{display:"flex", gap:12, alignItems:"center", flexWrap:isMobile?"wrap":"nowrap"}}>
                 <motion.button
                   onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
                   whileHover={{backgroundColor:t.bgMuted, borderColor:t.borderHover}}

@@ -4,6 +4,7 @@ from app.schemas.analysis import BehavioralSummary, StructuralSignal
 from pydantic import BaseModel
 import json
 import re
+from app.schemas.extraction import CorporateKnowledgeGraph
 
 class BusinessEngineOutput(BaseModel):
     behavioral_summary: BehavioralSummary
@@ -15,68 +16,34 @@ class BusinessEngineOutput(BaseModel):
 # It also heavily reduces LLM hallucinations since the model isn't trying to juggle
 # financials, analogies, and risk vectors inside a single context window.
 class BusinessEngine:
-    async def run(self, company_name: str, filing_text: str) -> BusinessEngineOutput:
-        prompt = f"""You are the Business Engine of the ForeTrace AI. You are a highly critical, skeptical strategist. You are exclusively analyzing top 200 / S&P 500 companies. 
-Do NOT praise the company for being a "market leader" or having "strong products"—that is the bare minimum for this tier. Your job is to find the "rot inside": strategic missteps, saturated core markets, desperate pivots, and structural trade-offs that management is trying to hide.
+    async def run_deterministic(self, company_name: str, extraction_data: CorporateKnowledgeGraph) -> BusinessEngineOutput:
+        """
+        Pure Python mapping of Structural Pillars to legacy Behavioral Summary.
+        """
+        # We synthesize the narrative from the various structural pillars
+        bm = extraction_data.business_model
+        cp = extraction_data.competitive_position
+        
+        def _get_evidence(metrics_dict):
+            if not metrics_dict:
+                return "No evidence provided"
+            first_metric = metrics_dict[list(metrics_dict.keys())[0]]
+            return first_metric.evidence[0] if first_metric.evidence else "No evidence provided"
 
-Company: {company_name}
-
-Filing Text:
-{filing_text}
-
-INSTRUCTIONS:
-1. Identify the core structural shift under way in the business model, focusing on the pain points forcing this shift.
-2. Generate 1-2 business/operational structural signals (e.g., changes in customer strategy, operational priorities, go-to-market). Highlight the strategic tension.
-3. Identify a high-level abstract behavioral pattern name (e.g., "Margin Protection Pivot", "Growth at all costs", "Desperate M&A").
-4. Every evidence MUST be a direct quote from the text.
-5. Output strict JSON matching the schema below.
-
-JSON Format:
-{{
-  "behavioral_summary": {{
-    "observation": "The core structural shift under way.",
-    "evidence": "Direct quote or specific filing citation supporting the shift.",
-    "why_it_matters": "Specific business model tension or economic tradeoff.",
-    "future_implication": "Long-term projection of what this shift leads to.",
-    "confidence": "High" | "Moderate" | "Low",
-    "source": "Item 7 (MD&A) or Item 1A",
-    "key_forces": ["specific force 1", "specific force 2"]
-  }},
-  "behavioral_pattern_identified": "Abstract pattern name",
-  "structural_signals": [
-    {{
-      "observation": "Specific operational shift",
-      "trend": "rising" | "stable" | "declining",
-      "evidence": "Direct quote or specific citation from the 10-K.",
-      "why_it_matters": "Specific business impact.",
-      "future_implication": "Long-term effect.",
-      "possible_invalidation": "What specific data point/event would prove this wrong.",
-      "confidence": "High" | "Moderate" | "Low",
-      "source": "Item 7 (MD&A) or Item 1"
-    }}
-  ]
-}}
-"""
-        response = await groq_client.chat_completion_json(
-            prompt=prompt,
-            system_message="You are a business analysis engine. Return only valid JSON.",
-            tier="reasoning"
+        summary = BehavioralSummary(
+            observation=bm.description,
+            evidence=_get_evidence(bm.metrics),
+            why_it_matters=bm.why_it_matters,
+            future_implication=bm.future_implication,
+            confidence="High" if extraction_data.management_priorities.confidence > 0.8 else "Moderate",
+            source=extraction_data.management_priorities.source_section,
+            key_forces=bm.key_drivers + cp.key_drivers
         )
-        try:
-            return BusinessEngineOutput(**response)
-        except Exception as e:
-            from app.utils.logger import logger
-            logger.warning(f"Validation failed for BusinessEngineOutput: {e}. Retrying...")
-            retry_prompt = prompt + f"\n\nYour previous response failed validation: {str(e)}. Fix this specific issue and return corrected JSON."
-            
-            # Extract the tier from the previous call if possible, default to reasoning
-            tier = "reasoning"
-            
-            retry_response = await groq_client.chat_completion_json(
-                prompt=retry_prompt,
-                system_message="Return only valid JSON.",
-                tier=tier
-            )
-            return BusinessEngineOutput(**retry_response)
+        
+        return BusinessEngineOutput(
+            behavioral_summary=summary,
+            behavioral_pattern_identified="Transitioning structural profile",
+            structural_signals=[]
+        )
 
 business_engine = BusinessEngine()

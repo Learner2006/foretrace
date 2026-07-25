@@ -1,7 +1,8 @@
 import pytest
+from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 from app.main import app
-from app.schemas.analysis import AnalyzeRequest, CompareRequest, sanitize_string
+from app.schemas.analysis import AnalyzeRequest, sanitize_string
 from app.utils.circuit_breaker import CircuitBreaker, CircuitBreakerOpenException
 import asyncio
 
@@ -27,9 +28,19 @@ def test_input_sanitization():
 
 
 def test_ticker_validation():
-    # Valid ticker format
-    req = AnalyzeRequest(company_name="Tesla", ticker="TSLA")
-    assert req.ticker == "TSLA"
+    # Valid ticker formats
+    req1 = AnalyzeRequest(company_name="Tesla", ticker="TSLA")
+    assert req1.ticker == "TSLA"
+    
+    req2 = AnalyzeRequest(company_name="Spotify", ticker="SPOT")
+    assert req2.ticker == "SPOT"
+    
+    # Indian tickers throw validation error because they are not supported
+    with pytest.raises(ValueError, match="Indian companies are not supported"):
+        AnalyzeRequest(company_name="Reliance", ticker="RELIANCE.NS")
+        
+    with pytest.raises(ValueError, match="Indian companies are not supported"):
+        AnalyzeRequest(company_name="BSE stock", ticker="500180.BO")
     
     # Invalid ticker lengths/chars throw validation error
     with pytest.raises(ValueError):
@@ -59,12 +70,12 @@ def test_authentication_middleware():
     # Status code is not 401 (could be 404 or 200 depending on actual file fetching)
     assert response.status_code != 401
 
-    # Protected routes accept token query param
+    # Protected REST routes reject token query param (to prevent leakage in URL logs)
     response = client.post(
         "/analyze?token=demo_token",
         json={"company_name": "Test Company", "ticker": "TEST"}
     )
-    assert response.status_code != 401
+    assert response.status_code == 401
 
 
 # ── 3. Request Size Limiting Tests ───────────────────────────────────────────
@@ -117,3 +128,54 @@ async def test_circuit_breaker():
         await wrapped()
     # Fails again, moves back to OPEN
     assert cb.state.name == "OPEN"
+
+
+# ── 5. WebSocket Comparison Validation Tests ──────────────────────────────────
+
+
+def test_websocket_analyze_validation():
+    # Mock analyze_company service method to avoid hitting actual engines
+    with patch("app.api.routes.analysis.analysis_service.analyze_company", new_callable=AsyncMock) as mock_analyze:
+        mock_analyze.return_value = {"status": "success"}
+        
+        # Connect using the websocket client
+        with client.websocket_connect("/ws/analyze/NVDA?token=demo_token") as websocket:
+            # Send payload
+            websocket.send_json({
+                "company_name": "NVIDIA Corporation"
+            })
+            
+            # The websocket should validate the request, run the analysis and send the result
+            response = websocket.receive_json()
+            assert response == {"type": "result", "data": {"status": "success"}}
+            
+            mock_analyze.assert_called_once()
+            args, kwargs = mock_analyze.call_args
+            assert args[0] == "NVIDIA Corporation"
+            assert args[1] == "NVDA"
+
+
+def test_admin_endpoints_authorization():
+    # Calling cache stats without admin credentials should return 403 Forbidden
+    response = client.get("/cache/stats", headers={"X-API-Key": "demo_token"})
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Forbidden. Admin privileges required."
+
+    # Calling cache stats with admin credentials should succeed
+    response = client.get("/cache/stats", headers={"X-API-Key": "demo_token", "X-Admin-Key": "demo_admin_token"})
+    assert response.status_code == 200
+
+    # Calling cache stats with admin query token should succeed
+    response = client.get("/cache/stats?admin_token=demo_admin_token", headers={"X-API-Key": "demo_token"})
+    assert response.status_code == 200
+
+    # Invalidation without admin credentials should return 403
+    response = client.delete("/cache/AAPL", headers={"X-API-Key": "demo_token"})
+    assert response.status_code == 403
+
+    # Invalidation with admin credentials should succeed
+    response = client.delete("/cache/AAPL", headers={"X-API-Key": "demo_token", "X-Admin-Key": "demo_admin_token"})
+    assert response.status_code == 200
+    assert response.json() == {"invalidated": "AAPL"}
+
+

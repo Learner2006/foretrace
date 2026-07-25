@@ -25,9 +25,15 @@ class SECClient:
                 r.raise_for_status()
                 return r
                 
+        import time
+        from app.utils.metrics import API_LATENCY
+
         for attempt in range(max_retries):
             try:
-                return await make_request()
+                start = time.perf_counter()
+                res = await make_request()
+                API_LATENCY.labels(service="sec_edgar").observe(time.perf_counter() - start)
+                return res
             except Exception as e:
                 if attempt == max_retries - 1:
                     raise e
@@ -62,7 +68,7 @@ class SECClient:
 
     async def get_cik_by_ticker(self, ticker: str) -> Optional[str]:
         try:
-            logger.info(f"Fetching SEC tickers list", extra={"metadata": {"event": "outgoing_api_call", "target": "sec_tickers"}})
+            logger.info("Fetching SEC tickers list", extra={"metadata": {"event": "outgoing_api_call", "target": "sec_tickers"}})
             r = await self._get_with_retry(self.tickers_url, timeout=10.0)
             tickers_data = r.json()
             for _, val in tickers_data.items():

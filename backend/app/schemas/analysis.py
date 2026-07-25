@@ -152,8 +152,10 @@ class AnalyzeRequest(ForeTraceBaseModel):
     def validate_ticker(cls, v):
         if v is not None:
             v = v.upper().strip()
-            if not re.match(r"^[A-Z]{1,5}$", v):
-                raise ValueError("Ticker must be 1-5 uppercase letters")
+            if v.endswith(".NS") or v.endswith(".BO"):
+                raise ValueError("Indian companies are not supported")
+            if not re.match(r"^[A-Z][A-Z0-9\.\-\/]{0,11}$", v):
+                raise ValueError("Ticker must be a valid format (e.g. AAPL, MSFT)")
         return v
 
     @field_validator('company_name')
@@ -165,28 +167,6 @@ class AnalyzeRequest(ForeTraceBaseModel):
             raise ValueError("Company name must be under 200 characters")
         return v
 
-class CompareRequest(ForeTraceBaseModel):
-    ticker_a: str
-    company_a: Optional[str] = None
-    ticker_b: str
-    company_b: Optional[str] = None
-
-    @field_validator('ticker_a', 'ticker_b')
-    def validate_tickers(cls, v):
-        if v is not None:
-            v = v.upper().strip()
-            if not re.match(r"^[A-Z]{1,5}$", v):
-                raise ValueError("Ticker must be 1-5 uppercase letters")
-        return v
-
-    @field_validator('company_a', 'company_b')
-    def validate_companies(cls, v):
-        if v is not None:
-            v = sanitize_string(v)
-            if len(v) > 200:
-                raise ValueError("Company name must be under 200 characters")
-        return v
-
 
 class Signals(ForeTraceBaseModel):
     revenue_trend: str
@@ -195,6 +175,7 @@ class Signals(ForeTraceBaseModel):
     margin_pressure: bool
     layoffs_or_restructuring: bool
     cash_position: str
+    capex_trend: Optional[str] = None
 
 class StructuralSignal(ForeTraceBaseModel):
     observation: str

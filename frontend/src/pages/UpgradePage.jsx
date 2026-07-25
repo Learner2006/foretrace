@@ -6,12 +6,12 @@ import { useBreakpoint } from "../hooks/useWindowWidth";
 import { Icon, PremiumCard } from "../components/ui/UI";
 import { useTheme } from "../hooks/useTheme";
 
-// TODO: This is good enough for the MVP. We'll make it prettier when users actually complain.
+// TODO: Expand tier feature customization based on post-beta user feedback.
 const FREE = ["4 analysis fields per company", "Basic structural summary", "3 searches per day", "Watchlist (up to 3 companies)"];
-const PRO_ONLY = ["Historical analog comparisons", "Full 12-field deep analysis", "What could improve — AI suggestions", "Company vs company compare", "Structural forecast (12–24 months)", "Unlimited searches", "Unlimited watchlist", "Priority support"];
+const PRO_ONLY = ["Historical analog comparisons", "Full 12-field deep analysis", "What could improve — AI suggestions", "Structural forecast (12–24 months)", "Unlimited searches", "Unlimited watchlist", "Priority support"];
 const FREE_FEATURES = [...FREE.map(label => ({ label, included: true })), ...PRO_ONLY.map(label => ({ label, included: false }))];
 
-const PRO_HIGHLIGHTS = ["Full 12-field deep analysis", "Historical analog comparisons", "What could improve — AI suggestions", "Company vs company compare"];
+const PRO_HIGHLIGHTS = ["Full 12-field deep analysis", "Historical analog comparisons", "What could improve — AI suggestions"];
 const PRO_STANDARD = ["Structural forecast (12–24 months)", "Unlimited searches", "Unlimited watchlist", "Priority support", "Early access to new features", "Export reports as PDF", "API access (coming soon)"];
 const PRO_FEATURES = [{ label: "Everything in Free", highlight: false }, ...PRO_HIGHLIGHTS.map(label => ({ label, highlight: true })), ...PRO_STANDARD.map(label => ({ label, highlight: false }))];
 
@@ -26,7 +26,7 @@ const FAQS = [
 const TESTIMONIALS = [
   { name: "Arjun S.", role: "Equity Analyst", text: "The historical analog matching alone is worth it. Saved me hours of manual research on every coverage note." },
   { name: "Priya M.", role: "Portfolio Manager", text: "Finally a tool that reads the actual filings. The structural forecast called NVDA's concentration risk months before it was mainstream." },
-  { name: "Daniel K.", role: "Seed-stage Investor", text: "I use the compare feature every week. Seeing two companies' structural trajectories side-by-side is genuinely useful." }
+  { name: "Daniel K.", role: "Seed-stage Investor", text: "I use ForeTrace every week. Seeing a company's true structural trajectory is genuinely useful." }
 ];
 
 function FeatureRow({ label, included, highlight, t, isPro }) {
@@ -112,7 +112,7 @@ export default function UpgradePage() {
             </motion.h1>
 
             <motion.p variants={v(MV.heroCh)} className="ft-sans" style={{ color: t.textSub, fontSize: isMobile ? 13 : 15, margin: "0 auto 40px", lineHeight: 1.7, maxWidth: 420, fontWeight: 300 }}>
-              Unlock historical analogs, deep structural analysis, and the compare tool. Built for investors who read the filings.
+              Unlock historical analogs and deep structural analysis. Built for investors who read the filings.
             </motion.p>
 
             <motion.div variants={v(MV.heroCh)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 40 }}>
@@ -189,7 +189,7 @@ export default function UpgradePage() {
 
         <div style={{ ...maxW, marginBottom: isMobile ? 56 : 80 }}>
           <motion.div variants={v(MV.fadeUp)} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
-            <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", margin: "0 0 6px" }}>Compare plans</p>
+            <p className="ft-sans" style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.8px", textTransform: "uppercase", margin: "0 0 6px" }}>Pricing plans</p>
             <h2 className="ft-serif" style={{ fontSize: isMobile ? 22 : 28, fontWeight: 400, margin: "0 0 28px", letterSpacing: "-0.3px", color: t.text }}>What you get with each plan</h2>
           </motion.div>
 
@@ -204,7 +204,6 @@ export default function UpgradePage() {
               ["Searches per day", "3", "Unlimited"],
               ["Historical analog matches", "✗", "✓"],
               ["What could improve", "✗", "✓"],
-              ["Company compare", "✗", "✓"],
               ["Structural forecast", "✗", "✓"],
               ["Watchlist", "3 companies", "Unlimited"],
               ["PDF export", "✗", "✓"],

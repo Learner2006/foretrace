@@ -10,3 +10,6 @@ yfinance
 python-multipart
 websockets
 pydantic-settings
+prometheus-fastapi-instrumentator
+sentry-sdk[fastapi]
+redis

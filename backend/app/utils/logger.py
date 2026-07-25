@@ -2,6 +2,10 @@ import logging
 import sys
 import json
 from datetime import datetime
+from contextvars import ContextVar
+
+request_id_var: ContextVar[str] = ContextVar("request_id", default="")
+correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
 
 class JSONFormatter(logging.Formatter):
     def format(self, record):
@@ -11,6 +15,15 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
+        
+        req_id = request_id_var.get()
+        if req_id:
+            log_obj["request_id"] = req_id
+            
+        corr_id = correlation_id_var.get()
+        if corr_id:
+            log_obj["correlation_id"] = corr_id
+
         if hasattr(record, "request_id"):
             log_obj["request_id"] = record.request_id
         if hasattr(record, "metadata"):

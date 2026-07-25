@@ -3,11 +3,47 @@ from app.config.settings import settings
 from app.utils.logger import logger
 from typing import Dict, Any, List, Optional
 import asyncio
+import time
 import json
 import re
 from app.utils.circuit_breaker import CircuitBreaker
 
-groq_circuit = CircuitBreaker("Groq API")
+groq_circuit = CircuitBreaker("Groq API", failure_threshold=20, recovery_time=5.0)
+
+
+class TokenRateLimiter:
+    def __init__(self, max_tpm: int = 14000, max_rpm: int = 20):
+        self.max_tpm = max_tpm
+        self.max_rpm = max_rpm
+        self.requests = []  # List of tuples (timestamp, token_count)
+
+    async def acquire(self, estimated_tokens: int):
+        import time
+        while True:
+            now = time.time()
+            # Clean window: keep requests from the last 60 seconds
+            self.requests = [r for r in self.requests if now - r[0] < 60.0]
+            
+            current_tokens = sum(r[1] for r in self.requests)
+            current_rpm = len(self.requests)
+            
+            # Monitoring
+            if current_rpm >= self.max_rpm * 0.8 or current_tokens >= self.max_tpm * 0.8:
+                logger.warning(f"Groq Rate Limits Approaching: {current_rpm}/{self.max_rpm} RPM, {current_tokens}/{self.max_tpm} TPM.")
+                
+            if current_tokens + estimated_tokens > self.max_tpm or current_rpm >= self.max_rpm:
+                sleep_dur = 1.0
+                if self.requests:
+                    sleep_dur = max(0.5, 60.0 - (now - self.requests[0][0]))
+                    sleep_dur = min(3.0, sleep_dur)
+                logger.warning(
+                    f"Proactive Rate Limiting: window at {current_tokens} tokens / {current_rpm} RPM. "
+                    f"Acquiring {estimated_tokens} tokens. Delaying execution by {sleep_dur:.2f}s..."
+                )
+                await asyncio.sleep(sleep_dur)
+            else:
+                self.requests.append((now, estimated_tokens))
+                break
 
 
 class GroqClient:
@@ -17,6 +53,7 @@ class GroqClient:
             "Authorization": f"Bearer {settings.groq_api_key}",
             "Content-Type": "application/json",
         }
+        self.rate_limiter = TokenRateLimiter(max_tpm=14000, max_rpm=20)
         # Hardcoded fallbacks in case the dynamic fetch fails
         self.fallback_fast_models = [
             "llama-3.3-70b-versatile",
@@ -64,13 +101,14 @@ class GroqClient:
                 # Fallback 2: DeepSeek R1
                 deepseeks = [m for m in available if "deepseek-r1" in m.lower()]
                 
-                others = [m for m in available if m not in llama3_3 and m not in llama3_1 and m not in deepseeks]
-                return llama3_3 + llama3_1 + deepseeks + others
+                # Only return verified compatible text models to avoid infinite loop on speech/invalid models
+                return llama3_3 + llama3_1 + deepseeks
             else: # fast
                 # Prefer versatile/instant llama models
                 llamas = [m for m in available if "llama" in m.lower() and ("8b" in m.lower() or "instant" in m.lower())]
                 llamas_70b = [m for m in available if "llama" in m.lower() and "70b" in m.lower() and "versatile" in m.lower()]
-                return llamas + llamas_70b + available
+                mixtral = [m for m in available if "mixtral" in m.lower()]
+                return llamas + llamas_70b + mixtral
                 
         # If dynamic fetch failed, use hardcoded lists
         return self.fallback_reasoning_models if tier == "reasoning" else self.fallback_fast_models
@@ -96,51 +134,84 @@ class GroqClient:
         seen = set()
         models_to_try = [x for x in models_to_try if not (x in seen or seen.add(x))]
 
+        # Estimate token usage and proactively acquire window slots to prevent 429
+        estimated_tokens = len(system_message + prompt) // 4
+        await self.rate_limiter.acquire(estimated_tokens)
+
         async with httpx.AsyncClient() as client:
             for current_model in models_to_try:
                 logger.info(f"Trying Groq model: {current_model}...", extra={"metadata": {"event": "ai_execution_start", "model": current_model}})
-                try:
-                    payload = {
-                        "model": current_model,
-                        "messages": [
-                            {"role": "system", "content": system_message},
-                            {"role": "user", "content": prompt}
-                        ],
-                        "temperature": temperature,
-                        "response_format": {"type": "json_object"}
-                    }
+                
+                for attempt in range(3):
+                    from app.utils.metrics import GROQ_REQUESTS
+                    GROQ_REQUESTS.labels(model=current_model).inc()
+                    start_api = time.perf_counter()
+                    try:
+                        payload = {
+                            "model": current_model,
+                            "messages": [
+                                {"role": "system", "content": system_message},
+                                {"role": "user", "content": prompt}
+                            ],
+                            "temperature": temperature,
+                            "response_format": {"type": "json_object"}
+                        }
+                        from app.utils.metrics import API_LATENCY
 
-                    r = await client.post(
-                        f"{self.base_url}/chat/completions",
-                        headers=self.headers,
-                        json=payload,
-                        timeout=40.0,
-                    )
-                    
-                    if r.status_code == 429:
-                        logger.warning(f"Groq model {current_model} returned 429 Rate Limit. Trying next fallback...")
-                        continue
+                        start = time.perf_counter()
+                        r = await client.post(
+                            f"{self.base_url}/chat/completions",
+                            headers=self.headers,
+                            json=payload,
+                            timeout=40.0,
+                        )
+                        API_LATENCY.labels(service="groq").observe(time.perf_counter() - start)
                         
-                    if r.status_code == 404:
-                        logger.warning(f"Groq model {current_model} returned 404 (Deprecated/Removed). Seamlessly falling back...")
-                        continue
-                        
-                    r.raise_for_status()
-                    data = r.json()
-                    if "choices" in data:
-                        raw = data["choices"][0]["message"]["content"]
-                        logger.info(f"Groq API success with: {current_model}")
-                        try:
-                            return json.loads(raw)
-                        except json.JSONDecodeError:
-                            match = re.search(r'(\{.*\})', raw, re.DOTALL)
-                            if match:
-                                return json.loads(match.group(1))
+                        if r.status_code == 429:
+                            from app.utils.metrics import GROQ_429_COUNT
+                            GROQ_429_COUNT.inc()
+                            if attempt < 2:
+                                import random
+                                sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
+                                logger.warning(f"Groq model {current_model} returned 429 Rate Limit (Attempt {attempt+1}/3). Retrying in {sleep_time:.2f}s...")
+                                await asyncio.sleep(sleep_time)
+                                continue
                             else:
-                                raise ValueError("Could not parse JSON from LLM response.")
+                                from app.utils.metrics import GROQ_FAILURES
+                                GROQ_FAILURES.labels(model=current_model, type="429").inc()
+                                break
+                            
+                        if r.status_code >= 400:
+                            from app.utils.metrics import GROQ_FAILURES
+                            GROQ_FAILURES.labels(model=current_model, type=str(r.status_code)).inc()
+                            logger.error(f"Groq API Error ({r.status_code}): {r.text}")
+                            if r.status_code == 404:
+                                logger.warning(f"Groq model {current_model} returned 404 (Deprecated/Removed). Seamlessly falling back...")
+                            break
+                            
+                        r.raise_for_status()
+                        data = r.json()
+                        if "choices" in data:
+                            raw = data["choices"][0]["message"]["content"]
+                            logger.info(f"Groq API success with: {current_model}")
+                            try:
+                                return json.loads(raw)
+                            except json.JSONDecodeError:
+                                match = re.search(r'(\{.*\})', raw, re.DOTALL)
+                                if match:
+                                    return json.loads(match.group(1))
+                                else:
+                                    raise ValueError("Could not parse JSON from LLM response.")
                         
-                except Exception as e:
-                    logger.warning(f"Groq model {current_model} failed: {e}. Trying next model...")
+                    except Exception as e:
+                        from app.utils.metrics import GROQ_FAILURES
+                        GROQ_FAILURES.labels(model=current_model, type="exception").inc()
+                        logger.error(f"Groq Request Exception on {current_model}: {str(e)}")
+                        if attempt == 2:
+                            logger.warning(f"Groq model {current_model} failed after retries: {e}. Trying next model...")
+                        else:
+                            await asyncio.sleep(1.0)
+                            continue
                     continue
             
             logger.error("All fallback models failed.", extra={"metadata": {"event": "ai_execution_all_failed"}})

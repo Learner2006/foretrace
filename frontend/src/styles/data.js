@@ -116,7 +116,7 @@ export const SEARCH_RECENT = [
   { label:"Netflix restructuring pattern",          time:"3d ago" },
 ];
 
-export const COVERAGE = ["Apple","Microsoft","Nvidia","Amazon","Alphabet","Meta","Tesla","Berkshire","TSMC","Reliance"];
+export const COVERAGE = ["Apple","Microsoft","Nvidia","Amazon","Alphabet","Meta","Tesla","Adobe","Salesforce","Netflix"];
 
 const TICKER_MAP = {
   "Apple": "AAPL",
@@ -126,8 +126,7 @@ const TICKER_MAP = {
   "Alphabet": "GOOGL",
   "Meta": "META",
   "Tesla": "TSLA",
-  "Berkshire": "BRK.B",
-  "TSMC": "TSM",
+  "Netflix": "NFLX",
   "Spotify": "SPOT",
   "Adobe": "ADBE",
   "Salesforce": "CRM",

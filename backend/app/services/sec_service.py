@@ -1,5 +1,4 @@
 import re
-import html
 from typing import Optional
 from fastapi import HTTPException
 from app.clients.sec_client import sec_client
@@ -52,21 +51,21 @@ class SECService:
             
             extracted_parts = []
             if pos_1a is not None:
-                # 12k chars captures the most material risks
-                extracted_parts.append("RISK FACTORS: " + text[pos_1a:pos_1a + 12000])
+                # 4k chars captures the most material risks under Groq TPM limits
+                extracted_parts.append("RISK FACTORS: " + text[pos_1a:pos_1a + 4000])
                 
             if pos_7 is not None:
-                # 15k chars captures core MD&A narrative
-                extracted_parts.append("MD&A: " + text[pos_7:pos_7 + 15000])
+                # 5k chars captures core MD&A narrative under Groq TPM limits
+                extracted_parts.append("MD&A: " + text[pos_7:pos_7 + 5000])
 
             if extracted_parts:
                 combined = "\n\n".join(extracted_parts)
                 return combined
                 
-            return text[15000:40000] # Fallback: skip TOC and return a chunk
+            return text[15000:20000] # Fallback: skip TOC and return a chunk
         except Exception as e:
             logger.error(f"Error extracting signal text: {e}")
-            return raw_html[:20000]
+            return raw_html[:10000]
 
     async def fetch_company_filing(self, company_name: str, ticker: Optional[str]) -> str:
         if ticker and self.is_indian_ticker(ticker):

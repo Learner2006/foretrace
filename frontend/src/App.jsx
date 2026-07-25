@@ -3,7 +3,7 @@ import { ThemeProvider } from "./hooks/useTheme";
 import HomePage from "./pages/HomePage";
 import AnalysisPage from "./pages/AnalysisPage";
 import CompaniesPage from "./pages/CompaniesPage";
-import ComparePage from "./pages/ComparePage";
+
 import WatchlistPage from "./pages/WatchlistPage";
 import AboutPage from "./pages/AboutPage";
 import UpgradePage from "./pages/UpgradePage";
@@ -19,7 +19,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/AnalysisPage" element={<AnalysisPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
-          <Route path="/ComparePage" element={<ComparePage />} />
+
           <Route path="/WatchlistPage" element={<WatchlistPage />} />
           <Route path="/AboutPage" element={<AboutPage />} />
           <Route path="/upgrade" element={<UpgradePage />} />

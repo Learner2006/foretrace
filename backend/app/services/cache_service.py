@@ -1,7 +1,7 @@
 """
 In-memory analysis result cache for ForeTrace.
-Caches completed analysis results per ticker so that repeated lookups
-(e.g., CompanyPage + ComparePage for the same ticker) reuse the same run.
+Caches completed analysis results per ticker. This ensures multiple near-simultaneous requests for the same company
+(e.g., rapid page reloads or multiple users querying the same ticker) reuse the same run.
 
 TTL: 24 hours — SEC filings don't change intraday.
 Max size: 1000 tickers.

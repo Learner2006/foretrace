@@ -17,15 +17,7 @@ class AnalysisService:
     async def analyze_company(self, company_name: str, ticker: Optional[str] = None, on_step_cb: Optional[Callable[[int], Any]] = None) -> Dict[str, Any]:
         return await composer_engine.run_pipeline(company_name, ticker, on_step_cb)
 
-    async def _run_or_cache(self, company_name: str, ticker: str, on_step_cb: Optional[Callable[[int], Any]] = None) -> Dict[str, Any]:
-        cached = analysis_cache.get(ticker)
-        if cached:
-            if on_step_cb:
-                await on_step_cb(3) # trigger completion step
-            return cached
-        result = await self.analyze_company(company_name, ticker, on_step_cb)
-        analysis_cache.set(ticker, result)
-        return result
+
 
     @staticmethod
     def score_signal(signals: Dict[str, Any], dim: Dict) -> Optional[str]:
@@ -60,30 +52,6 @@ class AnalysisService:
         score -= (bad * 10)
         
         return max(0, min(100, score))
-
-    def build_head_to_head(self, data_a: Dict, data_b: Dict) -> List[Dict]:
-        sigs_a = data_a.get("signals") or {}
-        sigs_b = data_b.get("signals") or {}
-        rows = []
-        for dim in SIGNAL_DIMS:
-            sa = self.score_signal(sigs_a, dim)
-            sb = self.score_signal(sigs_b, dim)
-            if sa is None and sb is None:
-                continue
-            winner = None
-            if sa == "good" and sb != "good":
-                winner = "a"
-            elif sb == "good" and sa != "good":
-                winner = "b"
-            rows.append({
-                "dimension":  dim["label"],
-                "value_a":    sigs_a.get(dim["key"]),
-                "value_b":    sigs_b.get(dim["key"]),
-                "score_a":    sa,
-                "score_b":    sb,
-                "winner":     winner,
-            })
-        return rows
 
     @staticmethod
     def summarise_market_position(mp: Dict) -> Dict:
@@ -121,50 +89,5 @@ class AnalysisService:
             "behavioral_pattern":  raw.get("behavioral_pattern_identified", ""),
         }
 
-    async def compare_companies(
-        self,
-        ticker_a: str,
-        ticker_b: str,
-        name_a: str,
-        name_b: str,
-        on_step_a: Optional[Callable[[int], Any]] = None,
-        on_step_b: Optional[Callable[[int], Any]] = None
-    ) -> Dict[str, Any]:
-        ticker_a = ticker_a.upper().strip()
-        ticker_b = ticker_b.upper().strip()
-
-        result_a, result_b = await asyncio.gather(
-            self._run_or_cache(name_a, ticker_a, on_step_a),
-            self._run_or_cache(name_b, ticker_b, on_step_b),
-        )
-
-        score_a = self.compute_advantage_score(result_a)
-        score_b = self.compute_advantage_score(result_b)
-
-        if score_a > score_b + 5:
-            overall_winner = "a"
-        elif score_b > score_a + 5:
-            overall_winner = "b"
-        else:
-            overall_winner = "tie"
-
-        head_to_head = self.build_head_to_head(result_a, result_b)
-        wins_a = sum(1 for r in head_to_head if r["winner"] == "a")
-        wins_b = sum(1 for r in head_to_head if r["winner"] == "b")
-
-        return {
-            "ticker_a": ticker_a,
-            "ticker_b": ticker_b,
-            "company_a": result_a.get("company", ticker_a),
-            "company_b": result_b.get("company", ticker_b),
-            "overall_winner": overall_winner,
-            "score_a": score_a,
-            "score_b": score_b,
-            "wins_a": wins_a,
-            "wins_b": wins_b,
-            "head_to_head": head_to_head,
-            "company_a_detail": self.shape_company_snapshot(result_a, ticker_a),
-            "company_b_detail": self.shape_company_snapshot(result_b, ticker_b),
-        }
-
 analysis_service = AnalysisService()
+
