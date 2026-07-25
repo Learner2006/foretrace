@@ -25,6 +25,10 @@ class ExtractionEngine:
         4. Cite the specific source_section (e.g., 'Item 7 MD&A').
         5. Return ONLY valid JSON matching the CorporateKnowledgeGraph schema.
         6. For competitive_position metrics, you MUST extract the keys: 'moat_strength', 'trajectory', 'relative_rank', 'key_dependency', and 'momentum'.
+        7. For competitive_position metric values, use standardized categories:
+           - 'moat_strength': 'weak', 'moderate', or 'strong'
+           - 'trajectory': 'declining', 'stable', or 'growing'
+           - 'relative_rank': 'laggard', 'challenger', 'leader', or 'dominant'
         """
         
         # We need the JSON schema definition
