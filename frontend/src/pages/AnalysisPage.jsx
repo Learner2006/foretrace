@@ -655,26 +655,11 @@ function ActiveWorkspace({ result, state, loading, error, step, t, isMobile, onS
             {result.analogs?.length > 0 && (
               <motion.div custom={4} variants={cardVariants} initial="hidden" animate="visible">
                 <SectionHead label="Analog engine" title="History doesn't repeat. But structure does." isMobile={isMobile} t={t} />
-                <PremiumCard t={t} style={{ background: t.bgCard }} noLift>
-                  <div style={{ background: t.bgSubtle, borderBottom: `1px solid ${t.border}`, padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <motion.div animate={{ opacity: [1, 0.45, 1] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                        style={{ width: 6, height: 6, borderRadius: "50%", background: t.positive, flexShrink: 0 }} />
-                      <span className="ft-sans" style={{ fontSize: 11, color: t.textSub, fontWeight: 500 }}>
-                        Analog Engine · Structural match report
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="ft-sans" style={{ fontSize: 10, color: t.textMuted }}>{result.match_count || (result.analogs && result.analogs[0]?.matchCount) || 2} matches found</span>
-                      <span className="ft-sans" style={{ fontSize: 9, fontWeight: 700, background: t.text, color: t.bg, padding: "1px 7px", borderRadius: 3, letterSpacing: "0.3px" }}>PRO</span>
-                    </div>
-                  </div>
-                  <div style={{ padding: isMobile ? "20px 16px" : "24px 28px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-                      {result.analogs.map((a, i) => <AnalogCard key={i} analog={a} t={t} />)}
-                    </div>
-                  </div>
-                </PremiumCard>
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  {result.analogs.map((a, i) => (
+                    <AnalogCard key={i} analog={a} t={t} isMobile={isMobile} />
+                  ))}
+                </div>
               </motion.div>
             )}
 
