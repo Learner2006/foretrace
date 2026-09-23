@@ -1,7 +1,7 @@
 import httpx
 from app.config.settings import settings
 from app.utils.logger import logger
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import asyncio
 import time
 import json
@@ -54,16 +54,18 @@ class GroqClient:
             "Content-Type": "application/json",
         }
         self.rate_limiter = TokenRateLimiter(max_tpm=14000, max_rpm=20)
-        # Hardcoded fallbacks in case the dynamic fetch fails
+        # Active Groq models fallbacks in case dynamic fetch fails
         self.fallback_fast_models = [
             "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768"
+            "gemma2-9b-it",
+            "llama-3.2-3b-preview",
         ]
         self.fallback_reasoning_models = [
             "llama-3.3-70b-versatile",
-            "llama-3.1-70b-versatile",
-            "deepseek-r1-distill-llama-70b"
+            "deepseek-r1-distill-llama-70b",
+            "qwen-2.5-32b",
+            "llama-3.1-8b-instant",
         ]
         self._cached_models = []
 
@@ -93,22 +95,26 @@ class GroqClient:
         
         # If API returns models, dynamically build the best list
         if available:
+            # Filter out non-chat/audio models
+            text_models = [
+                m for m in available 
+                if not any(x in m.lower() for x in ["whisper", "orpheus", "tts", "stt", "audio"])
+            ]
+            
             if tier == "reasoning":
-                # Primary: Llama 3.3 70B
-                llama3_3 = [m for m in available if "llama" in m.lower() and "3.3" in m.lower() and "70b" in m.lower()]
-                # Fallback 1: Llama 3.1 70B
-                llama3_1 = [m for m in available if "llama" in m.lower() and "3.1" in m.lower() and "70b" in m.lower()]
-                # Fallback 2: DeepSeek R1
-                deepseeks = [m for m in available if "deepseek-r1" in m.lower()]
-                
-                # Only return verified compatible text models to avoid infinite loop on speech/invalid models
-                return llama3_3 + llama3_1 + deepseeks
-            else: # fast
-                # Prefer versatile/instant llama models
-                llamas = [m for m in available if "llama" in m.lower() and ("8b" in m.lower() or "instant" in m.lower())]
-                llamas_70b = [m for m in available if "llama" in m.lower() and "70b" in m.lower() and "versatile" in m.lower()]
-                mixtral = [m for m in available if "mixtral" in m.lower()]
-                return llamas + llamas_70b + mixtral
+                # Prioritize large/reasoning models (70b+, 120b+, deepseek, gpt-oss, qwen)
+                large_models = [
+                    m for m in text_models 
+                    if any(k in m.lower() for k in ["70b", "120b", "90b", "deepseek", "gpt", "qwen", "reasoning"])
+                ]
+                return large_models if large_models else text_models
+            else:  # fast tier
+                # Prioritize fast/instant models (8b, 3b, 1b, 17b, 20b, instant, scout, gemma, versatile)
+                fast_models = [
+                    m for m in text_models 
+                    if any(k in m.lower() for k in ["8b", "3b", "1b", "17b", "20b", "instant", "scout", "gemma", "versatile", "fast"])
+                ]
+                return fast_models if fast_models else text_models
                 
         # If dynamic fetch failed, use hardcoded lists
         return self.fallback_reasoning_models if tier == "reasoning" else self.fallback_fast_models
@@ -145,7 +151,6 @@ class GroqClient:
                 for attempt in range(3):
                     from app.utils.metrics import GROQ_REQUESTS
                     GROQ_REQUESTS.labels(model=current_model).inc()
-                    start_api = time.perf_counter()
                     try:
                         payload = {
                             "model": current_model,
